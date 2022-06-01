@@ -1,5 +1,4 @@
 from openpyxl import load_workbook
-import csv
 import mechanicalsoup
 import os
 
@@ -7,7 +6,7 @@ from refWebSites import MySoccerLeague
 
 
 def getRealTimeCurrentRefAssignments(br: mechanicalsoup.stateful_browser.StatefulBrowser) -> dict:
-    """ 
+    """
     Log into the MySoccerLeague website and pull all assignments for the weekend"""
     site = MySoccerLeague(br)
     assignments = site.getAssignments()
@@ -19,21 +18,24 @@ def getNewReferees() -> dict:
     """
     results = {}
     # Open the Workbook
-    workbook = load_workbook(filename = "Vys New Referees Fall 2021e.xlsx")
+    workbook = load_workbook(filename = "newRefs/NewRefs2022Spring.xlsx")
     sheet = workbook.active
 
     # Iterate the rows
-    for row in sheet.iter_rows(min_row = 2):  
+    for row in sheet.iter_rows(min_row = 2):
+
+        if row[0].value == None:
+            break
 
         lastName = row[0].value.lower().strip()
         firstName = row[1].value.lower().strip()
-        attended = row[3].value
+        attended = 0 #row[3].value
 
         if lastName == '':
             break
 
         results[f'{firstName} {lastName}'] = attended
-    
+
     return results
 
 
@@ -47,7 +49,7 @@ def getAllReferees() -> dict:
     sheet = workbook.active
 
     # Iterate the rows
-    for row in sheet.iter_rows(min_row = 2):  
+    for row in sheet.iter_rows(min_row = 2):
 
         lastName = row[7].value.lower().strip()
         firstName = row[6].value.lower().strip()
@@ -57,7 +59,7 @@ def getAllReferees() -> dict:
             break
 
         results[f'{firstName} {lastName}'] = id
-    
+
     return results
 
 
@@ -109,7 +111,7 @@ def printout(current: list, newRefs: list) -> None:
             position = game['position']
             date = game['date']
             print(f'\tID: {id}, Field: {field}, Date: {date}, Time: {gameTime}, Age: {age}, Position: {position}')
- 
+
     # now print out all those without assignments
     for ref in newRefs:
         if ref not in current:
@@ -125,7 +127,7 @@ def printout2(currentu: list, newRefs: list, mentored: list) -> None:
     for field, details in current.items():
         fieldsOnce = False
         for game in details:
-            
+
             center = details[game]['Center'].lower()
             ar1 = details[game]['AR1'].lower()
             ar2 = details[game]['AR2'].lower()
@@ -141,8 +143,9 @@ def printout2(currentu: list, newRefs: list, mentored: list) -> None:
             date = details[game]['date']
             gameTime = details[game]['gameTime']
             age = details[game]['age']
-            
-            print(f'\tID: {game}, Field: {field}, Date: {date}, Time: {gameTime}, Age: {age}')
+            level = details[game]['level']
+
+            print(f'\tID: {game}, Date: {date}, Time: {gameTime}, Age: {age}, Level: {level}')
 
             cmarker = '**' if center in mentored else ''
             a1marker = '**' if ar1 in mentored else ''
