@@ -54,7 +54,7 @@ class RefereeDb():
 
     def mentorExists(self, firstname: str, lastname:str) -> bool:
         sql = "SELECT id from mentors where mentor_last_name = ? and mentor_first_name = ?"
-        r = self.cursor.execute(sql, [firstname.lower(), lastname.lower()])
+        r = self.cursor.execute(sql, [lastname.lower(), firstname.lower()])
         return len(r.fetchall()) == 1
 
 

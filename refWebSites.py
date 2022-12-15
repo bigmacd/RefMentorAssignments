@@ -137,6 +137,83 @@ class MySoccerLeague(RefereeWebSite):
         return results
 
 
+    def getMatches(self, dateInfo: str) -> dict:
+        url = 'https://www.mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=allDates&date={1}'
+
+        # convert from 'Day, Month Date, Year' i.e. (Saturday, September 24, 2022)
+        # to m/d/year
+        parts = dateInfo.split(',')
+        year = parts[2]
+        month, day = parts[1].lstrip().split(' ')
+
+        # fix month
+        dateObject = datetime.datetime.strptime(f'{month} {day} {year}', '%B %d %Y')
+        convertedDate = f'{dateObject.month}/{dateObject.day}/{dateObject.year}'
+
+        url = url.format(self._loginKey, convertedDate)
+        page = self._browser.open(url)
+
+        entries1 = page.soup.find_all("tr", { "class" : 'trstyle1' })
+        entries2 = page.soup.find_all("tr", { "class" : 'trstyle2' })
+
+        entries = entries1 + entries2
+
+        '''
+        Each entry is like this:  Organize by venue.
+
+        <tr class="trstyle1">
+        <td align="center">748590<br/><font color="green"></font></td>
+        <td><a href="javascript:directWindow('Ken Lawrence #2','No directions available','No comments')">Ken Lawrence #2</a></td>
+        <td>8:00 AM</td>
+        <td>U12G House</td>
+        <td>U-12</td>
+        <td>Girls</td>
+        <td>Rec</td>
+        <td>Bill Chappell</td>
+        <td>Katie Cohen</td>
+        <td align="left">Danika Pfleghardt</td>
+        <td align="left">Mitra Tafreshi</td>
+        <td align="left">Kate Curby</td>
+        </tr>'''
+
+        retVal = {}
+
+        for entry in entries:
+            elements = entry.find_all('td')
+            ref1 = elements[9].text.strip('\n').strip('\r')
+            ref2 = elements[10].text.strip('\n').strip('\r')
+            ref3 = elements[11].text.strip('\n').strip('\r')
+
+            # clean up the ref data as MSL can make a mess of it
+            if ref1 in (' ', '\xa0', 'Not Used\n'):
+                ref1 = 'None'
+            if ref2 in (' ', '\xa0', 'Not Used\n'):
+                ref2 = 'None'
+            if ref3 in (' ', '\xa0', 'Not Used\n'):
+                ref3 = 'None'
+
+            field = elements[1].text.strip().strip('\n').strip('\r')
+            level = elements[3].text
+            gameTime = elements[2].text
+            age = elements[4].text
+            gameId = elements[0].text
+
+            if field not in retVal:
+                retVal[field] = []
+
+            data = {
+                'Center': ref1,
+                'AR1': ref2,
+                'AR2': ref3,
+                'Time': gameTime,
+                'Level' :level,
+                'Age': age,
+                'GameID' :gameId
+            }
+            retVal[field].append(data)
+
+        return retVal
+
 
     def getAssignments(self):
         try:

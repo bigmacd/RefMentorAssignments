@@ -4,81 +4,83 @@ import datetime
 import mechanicalsoup
 from openpyxl import load_workbook
 import os
-from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog, yes_no_dialog
+#from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog, yes_no_dialog
+from streamlit.web import cli as stcli
+import sys
 
 from database import RefereeDb
 from refWebSites import MySoccerLeague
 
-def inputMentorReport():
+# def inputMentorReport():
 
-    done = False
-    while not done:
-        # start with mentors
-        db = RefereeDb()
-        mentors = db.getMentors()
-        values = []
-        for mentor in mentors:
-            entry = f'{mentor[0].capitalize()} {mentor[1].capitalize()}'
-            values.append((entry, entry))
+#     done = False
+#     while not done:
+#         # start with mentors
+#         db = RefereeDb()
+#         mentors = db.getMentors()
+#         values = []
+#         for mentor in mentors:
+#             entry = f'{mentor[0].capitalize()} {mentor[1].capitalize()}'
+#             values.append((entry, entry))
 
-        mentor = radiolist_dialog(
-            values = values,
-            title = "Select Mentor",
-            text="Select a Mentor"
-        ).run()
+#         mentor = radiolist_dialog(
+#             values = values,
+#             title = "Select Mentor",
+#             text="Select a Mentor"
+#         ).run()
 
-        # select referee
-        values = []
-        referees = db.getReferees()
-        for referee in referees:
-            entry = f'{referee[0].capitalize()} {referee[1].capitalize()}'
-            values.append((entry, entry))
+#         # select referee
+#         values = []
+#         referees = db.getReferees()
+#         for referee in referees:
+#             entry = f'{referee[0].capitalize()} {referee[1].capitalize()}'
+#             values.append((entry, entry))
 
-        referee = radiolist_dialog(
-            values = values,
-            title = "Select Referee",
-            text = "Select Referee"
-        ).run()
+#         referee = radiolist_dialog(
+#             values = values,
+#             title = "Select Referee",
+#             text = "Select Referee"
+#         ).run()
 
-        # select position
-        position = radiolist_dialog(
-            values = [
-                ("Center", "Center"),
-                ("AR1", "AR1"),
-                ("AR2", "AR2")
-            ],
-            title = "Select Referee's Position",
-            text = "Select Referee's Position"
-        ).run()
+#         # select position
+#         position = radiolist_dialog(
+#             values = [
+#                 ("Center", "Center"),
+#                 ("AR1", "AR1"),
+#                 ("AR2", "AR2")
+#             ],
+#             title = "Select Referee's Position",
+#             text = "Select Referee's Position"
+#         ).run()
 
-        # select date from list of dates for the season
-        br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
-        br.addheaders = [('User-agent', 'Chrome')]
-        m = MySoccerLeague(br)
-        dates = m.getAllDatesForSeason()
+#         # select date from list of dates for the season
+#         br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
+#         br.addheaders = [('User-agent', 'Chrome')]
+#         m = MySoccerLeague(br)
+#         dates = m.getAllDatesForSeason()
 
-        values = []
-        for date in dates:
-            values.append((date, date))
+#         values = []
+#         for date in dates:
+#             values.append((date, date))
 
-        date = radiolist_dialog(
-            values = values,
-            title = "Select Date Mentored",
-            text = "Select Date Mentored"
-        ).run()
+#         date = radiolist_dialog(
+#             values = values,
+#             title = "Select Date Mentored",
+#             text = "Select Date Mentored"
+#         ).run()
 
-        # input comments
-        comments = input_dialog(
-            title="Mentor Notes", text="Paste your comments here:"
-        ).run()
+#         # input comments
+#         comments = input_dialog(
+#             title="Mentor Notes", text="Paste your comments here:"
+#         ).run()
 
-        db.addMentorSession(mentor, referee, position, date, comments)
+#         db.addMentorSession(mentor, referee, position, date, comments)
 
-        answer = yes_no_dialog(
-            title = "Add another mentor session?"
-        ).run()
-        if not answer: # the No button was pressed
-            done = True
+#         answer = yes_no_dialog(
+#             title = "Add another mentor session?"
+#         ).run()
+#         if not answer: # the No button was pressed
+#             done = True
 
 def getRealTimeCurrentRefAssignments(br: mechanicalsoup.stateful_browser.StatefulBrowser) -> dict:
     """
@@ -383,9 +385,13 @@ def produceReport() -> None:
 
 if __name__ == "__main__":
 
+    sys.argv = ['streamlit', 'run', '--server.port', '443', 'ui.py']
+    stcli.main()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', dest='input', action='store_true', help='input a mentor report')
     parser.add_argument('-r', '--report', dest='report', action='store_true', help='run season report')
+
     args = parser.parse_args()
     if args.input:
         inputMentorReport()
