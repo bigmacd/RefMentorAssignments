@@ -324,7 +324,7 @@ def updateDatabase(newRefs: dict):
             db.addReferee(last, first, v)
 
 
-def addMentors() -> None:
+def addMentors(db) -> None:
     mentors = [
         ("david", "helfgott"),
         ("david", "dunlap"),
@@ -332,7 +332,7 @@ def addMentors() -> None:
         ("chuck", "o'reilly"),
         ("martin", "cooley")
     ]
-    db = RefereeDb()
+    #db = RefereeDb()
     for item in mentors:
         if not db.mentorExists(item[0], item[1]):
             db.addMentor(item[0], item[1])
@@ -384,6 +384,10 @@ def produceReport() -> None:
 
 
 if __name__ == "__main__":
+
+    from database import RefereeDbCockroach
+    db = RefereeDbCockroach()
+    addMentors(db)
 
     sys.argv = ['streamlit', 'run', '--server.port', '443', 'ui.py']
     stcli.main()

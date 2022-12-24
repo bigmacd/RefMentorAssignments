@@ -1,36 +1,14 @@
-import sqlite3
 import datetime
+import os
+import psycopg
+import sqlite3
+
+
 
 class RefereeDb():
 
     def __init__(self):
-        self.dbfilename = 'referees.db'
-        self.connection = sqlite3.connect(self.dbfilename)
-        self.connection.row_factory = sqlite3.Row
-        self.cursor = self.connection.cursor()
-        self.cursor.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='referees' ''')
-        if not self.cursor.fetchone()[0] == 1:
-            self.createDb()
-
-    def createDb(self) -> bool:
-        sql = """CREATE TABLE referees (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        lastname TEXT NOT NULL,
-                                        firstname TEXT NOT NULL,
-                                        year_certified INTEGER)"""
-        self.cursor.execute(sql)
-
-        sql = """CREATE TABLE mentors (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                       mentor_last_name TEXT NOT NULL,
-                                       mentor_first_name TEXT NOT NULL)"""
-        self.cursor.execute(sql)
-
-        sql = """CREATE TABLE mentor_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                               mentor INTEGER NOT NULL,
-                                               mentee INTEGER NOT NULL,
-                                               position TEXT NOT NULL,
-                                               date DATETIME NOT NULL,
-                                               comments BLOB NOT NULL)"""
-        self.cursor.execute(sql)
+        pass
 
 
     # finding stuff
@@ -53,8 +31,8 @@ class RefereeDb():
 
 
     def mentorExists(self, firstname: str, lastname:str) -> bool:
-        sql = "SELECT id from mentors where mentor_last_name = ? and mentor_first_name = ?"
-        r = self.cursor.execute(sql, [lastname.lower(), firstname.lower()])
+        sql = "SELECT id from mentors where mentor_last_name = %s and mentor_first_name = %s"
+        r = self.cursor.execute(sql, (lastname.lower(), firstname.lower()))
         return len(r.fetchall()) == 1
 
 
@@ -100,8 +78,8 @@ class RefereeDb():
 
     def addMentor(self, firstname: str, lastname: str) -> None:
         sql = "INSERT INTO mentors (mentor_last_name, mentor_first_name) \
-               VALUES (?, ?)"
-        self.cursor.execute(sql, [lastname, firstname])
+               VALUES (%s, %s)"
+        self.cursor.execute(sql, (lastname, firstname))
         self.connection.commit()
 
 
@@ -127,3 +105,71 @@ class RefereeDb():
         except Exception as ex:
             print(ex)
         self.connection.commit()
+
+
+class RefereeDbSqlite(RefereeDb):
+
+    def __init__(self):
+        self.dbfilename = 'referees.db'
+        self.connection = sqlite3.connect(self.dbfilename)
+        self.connection.row_factory = sqlite3.Row
+        self.cursor = self.connection.cursor()
+        self.cursor.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='referees' ''')
+        if not self.cursor.fetchone()[0] == 1:
+            self.createDb(self.cursor)
+
+
+    def createDb(self, cursor) -> bool:
+        sql = """CREATE TABLE referees (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        lastname TEXT NOT NULL,
+                                        firstname TEXT NOT NULL,
+                                        year_certified INTEGER)"""
+        cursor.execute(sql)
+
+        sql = """CREATE TABLE mentors (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        mentor_last_name TEXT NOT NULL,
+                                        mentor_first_name TEXT NOT NULL)"""
+        cursor.execute(sql)
+
+        sql = """CREATE TABLE mentor_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                mentor INTEGER NOT NULL,
+                                                mentee INTEGER NOT NULL,
+                                                position TEXT NOT NULL,
+                                                date DATETIME NOT NULL,
+                                                comments BLOB NOT NULL)"""
+        cursor.execute(sql)
+
+
+
+class RefereeDbCockroach(RefereeDb):
+
+    def __init__(self):
+        self.connection = psycopg.connect(os.environ['db_url'])
+        self.connection.autocommit = True
+        self.cursor = self.connection.cursor()
+        self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='referees'")
+        if not self.cursor.fetchone()[0] == 1:
+            self.createDb(self.cursor)
+
+
+    def createDb(self, cursor) -> bool:
+
+        sql = """CREATE TABLE referees (id SERIAL PRIMARY KEY,
+                                        lastname TEXT NOT NULL,
+                                        firstname TEXT NOT NULL,
+                                        year_certified INTEGER)"""
+        cursor.execute(sql)
+
+        sql = """CREATE TABLE mentors (id SERIAL PRIMARY KEY,
+                                        mentor_last_name TEXT NOT NULL,
+                                        mentor_first_name TEXT NOT NULL)"""
+        cursor.execute(sql)
+
+        sql = """CREATE TABLE mentor_sessions (id SERIAL PRIMARY KEY,
+                                                mentor INTEGER NOT NULL,
+                                                mentee INTEGER NOT NULL,
+                                                position TEXT NOT NULL,
+                                                date TIMESTAMP NOT NULL,
+                                                comments TEXT NOT NULL)"""
+        cursor.execute(sql)
+
