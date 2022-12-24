@@ -8,7 +8,7 @@ import os
 from streamlit.web import cli as stcli
 import sys
 
-from database import RefereeDb
+from database import RefereeDbCockroach
 from refWebSites import MySoccerLeague
 
 # def inputMentorReport():
@@ -203,7 +203,7 @@ def getRefsAlreadyMentored() -> dict:
     """
     Pull the names of all referees already mentored this season
     """
-    db = RefereeDb()
+    db = RefereeDbCockroach()
     retVal = db.getMentoringSessions()
 
     return retVal
@@ -317,7 +317,7 @@ def check() -> None:
 
 
 def updateDatabase(newRefs: dict):
-    db = RefereeDb()
+    db = RefereeDbCockroach()
     for k, v in newRefs.items():
         first, last = k.split(" ")
         if not db.findReferee(last, first):
@@ -332,7 +332,7 @@ def addMentors(db) -> None:
         ("chuck", "o'reilly"),
         ("martin", "cooley")
     ]
-    #db = RefereeDb()
+
     for item in mentors:
         if not db.mentorExists(item[0], item[1]):
             db.addMentor(item[0], item[1])
@@ -343,7 +343,7 @@ def run(skip: bool) -> None:
     Gather the new referee data from Dianne and correlate with current week's assignment.
     """
     # db maintenance for mentors
-    addMentors()
+    # addMentors()
 
     # Get the new refs from Google Sheet and make sure db is up-to-date
     newRefs = getNewRefereesFromGoogleSheet("newRefs/googlesheet.xlsx")
@@ -385,22 +385,18 @@ def produceReport() -> None:
 
 if __name__ == "__main__":
 
-    from database import RefereeDbCockroach
-    db = RefereeDbCockroach()
-    addMentors(db)
-
     sys.argv = ['streamlit', 'run', '--server.port', '443', 'ui.py']
     stcli.main()
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', dest='input', action='store_true', help='input a mentor report')
-    parser.add_argument('-r', '--report', dest='report', action='store_true', help='run season report')
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-i', '--input', dest='input', action='store_true', help='input a mentor report')
+    # parser.add_argument('-r', '--report', dest='report', action='store_true', help='run season report')
 
-    args = parser.parse_args()
-    if args.input:
-        inputMentorReport()
-    elif args.report:
-        produceReport()
-    else:
-        check()
-        run(skip = True)
+    # args = parser.parse_args()
+    # if args.input:
+    #     inputMentorReport()
+    # elif args.report:
+    #     produceReport()
+    # else:
+    #     check()
+    #     run(skip = True)

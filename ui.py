@@ -1,11 +1,11 @@
 import mechanicalsoup
 import streamlit as st
 
-from database import RefereeDb
+from database import RefereeDbCockroach
 from refWebSites import MySoccerLeague
 
 
-db = RefereeDb()
+db = RefereeDbCockroach()
 mentors = db.getMentors()
 
 
