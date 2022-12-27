@@ -62,11 +62,11 @@ def displayCrew(currentMatch: dict) -> None:
         st.write("Please make a note in the comments if this crew is different!")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.button(f"Center: {currentMatch['Center']}")
+            st.button(f"Center: {currentMatch['Center']}", disabled=True)
         with col2:
-            st.button(f"AR1: {currentMatch['AR1']}")
+            st.button(f"AR1: {currentMatch['AR1']}", disabled=True)
         with col3:
-            st.button(f"AR2: {currentMatch['AR2']}")
+            st.button(f"AR2: {currentMatch['AR2']}", disabled=True)
 
 
 def getComments() -> None:
@@ -92,9 +92,6 @@ def saveOrCancel() -> None:
 
 
 def main() -> None:
-
-    x = os.listdir('.')
-    st.write(str(x))
 
     db = RefereeDbCockroach()
     mentors = db.getMentors()
