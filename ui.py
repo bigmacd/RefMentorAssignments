@@ -93,6 +93,9 @@ def saveOrCancel() -> None:
 
 def main() -> None:
 
+    x = os.listdir('.')
+    st.write(str(x))
+
     db = RefereeDbCockroach()
     mentors = db.getMentors()
 
