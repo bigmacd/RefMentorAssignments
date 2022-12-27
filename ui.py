@@ -6,8 +6,6 @@ from database import RefereeDbCockroach
 from refWebSites import MySoccerLeague
 
 
-db = RefereeDbCockroach()
-mentors = db.getMentors()
 
 
 br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
@@ -16,7 +14,7 @@ site = MySoccerLeague(br)
 
 
 
-def getMentor() -> None:
+def getMentor(mentors) -> None:
 
     values = []
     for mentor in mentors:
@@ -95,7 +93,11 @@ def saveOrCancel() -> None:
 
 def main() -> None:
     st.write(os.getcwd())
-    getMentor()
+
+    db = RefereeDbCockroach()
+    mentors = db.getMentors()
+
+    getMentor(mentors)
     getDate()
     matches = getVenue(st.session_state['date'])
     getGames(matches)
