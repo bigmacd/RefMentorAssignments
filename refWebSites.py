@@ -2,7 +2,7 @@ import os
 import mechanicalsoup
 import datetime
 from datetime import timedelta
-
+import time
 
 class RefereeWebSite(object):
 
@@ -45,7 +45,13 @@ class MySoccerLeague(RefereeWebSite):
                            'ref'
                            'assistant1',
                            'assistant2' ]
-        self._login()
+        for i in range(3):
+            try:
+                self._login()
+            except Exception:
+                time.sleep(3)
+            else:
+                break
         self._getFutureDates(datetime.date.today())
 
 
