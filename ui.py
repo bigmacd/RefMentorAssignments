@@ -94,17 +94,17 @@ def saveOrCancel() -> None:
 def main() -> None:
     st.write(os.getcwd())
 
-    db = RefereeDbCockroach()
-    mentors = db.getMentors()
+    # db = RefereeDbCockroach()
+    # mentors = db.getMentors()
 
-    getMentor(mentors)
-    getDate()
-    matches = getVenue(st.session_state['date'])
-    getGames(matches)
-    currentMatch = getMatchDetails(matches[st.session_state['venue']])
-    displayCrew(currentMatch)
-    getComments()
-    saveOrCancel()
+    # getMentor(mentors)
+    # getDate()
+    # matches = getVenue(st.session_state['date'])
+    # getGames(matches)
+    # currentMatch = getMatchDetails(matches[st.session_state['venue']])
+    # displayCrew(currentMatch)
+    # getComments()
+    # saveOrCancel()
 
 if __name__ == "__main__":
     main()
