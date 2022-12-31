@@ -45,7 +45,7 @@ class MySoccerLeague(RefereeWebSite):
                            'ref'
                            'assistant1',
                            'assistant2' ]
-        for i in range(3):
+        for _ in range(3):
             try:
                 self._login()
             except Exception:
@@ -132,7 +132,8 @@ class MySoccerLeague(RefereeWebSite):
 
 
     def getAllDatesForSeason(self) -> list:
-        url = "https://mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=allDates".format(self._loginKey)
+        url = "https://mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=futureDates".format(self._loginKey)
+
         page = self._browser.open(url)
         box = page.soup.find("td", { "class" : 'tblborderforms', 'align' : 'center' })
         dates = box.find_all("a")
@@ -204,6 +205,7 @@ class MySoccerLeague(RefereeWebSite):
             age = elements[4].text
             gameId = elements[0].text
 
+
             if field not in retVal:
                 retVal[field] = []
 
@@ -222,37 +224,68 @@ class MySoccerLeague(RefereeWebSite):
 
 
     def getAssignments(self):
-        try:
-            results = {}
+        for _ in range(3):
+            try:
+                results = {}
 
-            # MSL url for current assignments
-            # need to extract the key fom the login_result first
-            url = "https://www.mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=futureDates&date={1}&startDate=9/8/21&endDate=11/19/21".format(self._loginKey, self._friday)
-            assignments_page = self._browser.open(url)
-            rowtype1 = assignments_page.soup.find_all("tr", { "class" : 'trstyle1'})
-            rowtype2 = assignments_page.soup.find_all("tr", { "class" : 'trstyle2'})
-            assignments = rowtype1 + rowtype2
+                # MSL url for current assignments
+                # need to extract the key fom the login_result first
+                url = "https://www.mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=futureDates&date={1}&startDate=9/8/21&endDate=11/19/21".format(self._loginKey, self._friday)
+                assignments_page = self._browser.open(url)
+                rowtype1 = assignments_page.soup.find_all("tr", { "class" : 'trstyle1'})
+                rowtype2 = assignments_page.soup.find_all("tr", { "class" : 'trstyle2'})
+                assignments = rowtype1 + rowtype2
 
-            self._parseAssignments(assignments, results, self._friday)
+                self._parseAssignments(assignments, results, self._friday)
 
-            url = "https://www.mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=futureDates&date={1}&startDate=9/8/21&endDate=11/19/21".format(self._loginKey, self._saturday)
-            assignments_page = self._browser.open(url)
-            rowtype1 = assignments_page.soup.find_all("tr", { "class" : 'trstyle1'})
-            rowtype2 = assignments_page.soup.find_all("tr", { "class" : 'trstyle2'})
-            assignments = rowtype1 + rowtype2
+                url = "https://www.mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=futureDates&date={1}&startDate=9/8/21&endDate=11/19/21".format(self._loginKey, self._saturday)
+                assignments_page = self._browser.open(url)
+                rowtype1 = assignments_page.soup.find_all("tr", { "class" : 'trstyle1'})
+                rowtype2 = assignments_page.soup.find_all("tr", { "class" : 'trstyle2'})
+                assignments = rowtype1 + rowtype2
 
-            self._parseAssignments(assignments, results, self._saturday)
+                self._parseAssignments(assignments, results, self._saturday)
 
-            url = "https://www.mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=futureDates&date={1}&startDate=9/8/21&endDate=11/19/21".format(self._loginKey, self._sunday)
-            assignments_page = self._browser.open(url)
-            rowtype1 = assignments_page.soup.find_all("tr", { "class" : 'trstyle1'})
-            rowtype2 = assignments_page.soup.find_all("tr", { "class" : 'trstyle2'})
-            assignments = rowtype1 + rowtype2
+                url = "https://www.mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=futureDates&date={1}&startDate=9/8/21&endDate=11/19/21".format(self._loginKey, self._sunday)
+                assignments_page = self._browser.open(url)
+                rowtype1 = assignments_page.soup.find_all("tr", { "class" : 'trstyle1'})
+                rowtype2 = assignments_page.soup.find_all("tr", { "class" : 'trstyle2'})
+                assignments = rowtype1 + rowtype2
 
-            self._parseAssignments(assignments, results, self._sunday)
+                self._parseAssignments(assignments, results, self._sunday)
 
-        except Exception as ex:
-            print(ex)
+            except Exception:
+                time.sleep(3)
+            else:
+                break
 
         return results
+
+    def getAllReferees(self) -> list:
+        for _ in range(3):
+            try:
+                url = 'https://www.mysoccerleague.com/AddRef.jsp?YSLkey={0}&actionName=Referees&showAll=true'.format(self._loginKey)
+                page = self._browser.open(url)
+
+                entries1 = page.soup.find_all("tr", { "class" : 'trstyle1' })
+                entries2 = page.soup.find_all("tr", { "class" : 'trstyle2' })
+
+                entries = entries1 + entries2
+
+                retVal = []
+                for entry in entries:
+                    elements = entry.find_all('td')
+                    refereeFullName = elements[4].text
+                    try:
+                        firstName, lastName = refereeFullName.split(' ')
+                    except ValueError:
+                        pass
+
+                    retVal.append((firstName.lower().strip(), lastName.lower().strip()))
+
+            except Exception:
+                time.sleep(3)
+            else:
+                break
+        return retVal
 

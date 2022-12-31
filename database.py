@@ -13,20 +13,26 @@ class RefereeDb():
 
     # finding stuff
     def refExists(self, lastname: str, firstname:str) -> bool:
-        sql = "SELECT id from referees where lastname = ? and firstname = ?"
-        r = self.cursor.execute(sql, [lastname.lower(), firstname.lower()])
+        sql = "SELECT id from referees where lastname = %s and firstname = %s"
+        r = self.cursor.execute(sql, (lastname.lower(), firstname.lower()))
         return len(r.fetchall()) == 1
 
 
     def findReferee(self, lastname: str, firstname: str) -> list:
-        sql = "SELECT * from referees where lastname = ? and firstname = ?"
-        r = self.cursor.execute(sql, [lastname.lower(), firstname.lower()])
+        sql = "SELECT * from referees where lastname = %s and firstname = %s"
+        r = self.cursor.execute(sql, (lastname.lower(), firstname.lower()))
         return r.fetchone()
 
 
     def getReferees(self) -> list:
         sql = "SELECT firstname, lastname from referees"
         r = self.cursor.execute(sql)
+        return r.fetchall()
+
+
+    def getNewReferees(self, year) -> list:
+        sql = "SELECT firstname, lastname from referees where year_certified = %s"
+        r = self.cursor.execute(sql, (year,))
         return r.fetchall()
 
 
@@ -37,8 +43,8 @@ class RefereeDb():
 
 
     def findMentor(self, firstname: str, lastname: str) -> list:
-        sql = "SELECT * from mentors where mentor_last_name = ? and mentor_first_name = ?"
-        r = self.cursor.execute(sql, [lastname.lower(), firstname.lower()])
+        sql = "SELECT * from mentors where mentor_last_name = %s and mentor_first_name = %s"
+        r = self.cursor.execute(sql, (lastname.lower(), firstname.lower()))
         return r.fetchone()
 
 
@@ -71,8 +77,8 @@ class RefereeDb():
     # adding data
     def addReferee(self, lastname: str, firstname: str, year: int):
         sql = "INSERT INTO referees (lastname, firstname, year_certified) \
-               VALUES (?, ?, ?)"
-        self.cursor.execute(sql, [lastname, firstname, year])
+               VALUES (%s, %s, %s)"
+        self.cursor.execute(sql, (lastname, firstname, year))
         self.connection.commit()
 
 

@@ -11,76 +11,7 @@ import sys
 from database import RefereeDbCockroach
 from refWebSites import MySoccerLeague
 
-# def inputMentorReport():
-
-#     done = False
-#     while not done:
-#         # start with mentors
-#         db = RefereeDb()
-#         mentors = db.getMentors()
-#         values = []
-#         for mentor in mentors:
-#             entry = f'{mentor[0].capitalize()} {mentor[1].capitalize()}'
-#             values.append((entry, entry))
-
-#         mentor = radiolist_dialog(
-#             values = values,
-#             title = "Select Mentor",
-#             text="Select a Mentor"
-#         ).run()
-
-#         # select referee
-#         values = []
-#         referees = db.getReferees()
-#         for referee in referees:
-#             entry = f'{referee[0].capitalize()} {referee[1].capitalize()}'
-#             values.append((entry, entry))
-
-#         referee = radiolist_dialog(
-#             values = values,
-#             title = "Select Referee",
-#             text = "Select Referee"
-#         ).run()
-
-#         # select position
-#         position = radiolist_dialog(
-#             values = [
-#                 ("Center", "Center"),
-#                 ("AR1", "AR1"),
-#                 ("AR2", "AR2")
-#             ],
-#             title = "Select Referee's Position",
-#             text = "Select Referee's Position"
-#         ).run()
-
-#         # select date from list of dates for the season
-#         br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
-#         br.addheaders = [('User-agent', 'Chrome')]
-#         m = MySoccerLeague(br)
-#         dates = m.getAllDatesForSeason()
-
-#         values = []
-#         for date in dates:
-#             values.append((date, date))
-
-#         date = radiolist_dialog(
-#             values = values,
-#             title = "Select Date Mentored",
-#             text = "Select Date Mentored"
-#         ).run()
-
-#         # input comments
-#         comments = input_dialog(
-#             title="Mentor Notes", text="Paste your comments here:"
-#         ).run()
-
-#         db.addMentorSession(mentor, referee, position, date, comments)
-
-#         answer = yes_no_dialog(
-#             title = "Add another mentor session?"
-#         ).run()
-#         if not answer: # the No button was pressed
-#             done = True
+db = RefereeDbCockroach()
 
 def getRealTimeCurrentRefAssignments(br: mechanicalsoup.stateful_browser.StatefulBrowser) -> dict:
     """
@@ -96,82 +27,35 @@ def getPastAssignments(br: mechanicalsoup.stateful_browser.StatefulBrowser, d: d
     return site.getAssignments()
 
 
-def getNewReferees(filename: str) -> dict:
-    """
-    Organize data from Dianne's spreadsheet of new referees.
-    """
-    results = {}
-    # Open the Workbook
-    workbook = load_workbook(filename = filename)
-    sheet = workbook.active
-
-    # Iterate the rows
-    for row in sheet.iter_rows(min_row = 2):
-
-        if row[0].value == None:
-            break
-
-        lastName = row[0].value.lower().strip()
-        firstName = row[1].value.lower().strip()
-        attended = 0 #row[3].value
-
-        if lastName == '':
-            break
-
-        results[f'{firstName} {lastName}'] = attended
-
-    return results
+def getAllRefereesFromSite(br: mechanicalsoup.stateful_browser.StatefulBrowser) -> list:
+    site = MySoccerLeague(br)
+    return site.getAllReferees()
 
 
-def getNewRefereesFromGoogleSheet(filename: str) -> dict:
-    results = {}
+# def getNewRefereesFromGoogleSheet(filename: str) -> dict:
+#     results = {}
 
-    # Open the Workbook
-    workbook = load_workbook(filename = filename)
-    sheet = workbook.active
+#     # Open the Workbook
+#     workbook = load_workbook(filename = filename)
+#     sheet = workbook.active
 
-    # Iterate the rows
-    for row in sheet.iter_rows(min_row = 2):
+#     # Iterate the rows
+#     for row in sheet.iter_rows(min_row = 2):
 
-        if row[0].value == None:
-            break
+#         if row[0].value == None:
+#             break
 
-        name = row[2].value.lower().strip()
-        lastName, firstName = name.split(',')
+#         name = row[2].value.lower().strip()
+#         lastName, firstName = name.split(',')
 
-        year = row[7].value.year
+#         year = row[7].value.year
 
-        if lastName == '':
-            break
+#         if lastName == '':
+#             break
 
-        results[f'{firstName.strip()} {lastName.strip()}'] = year
+#         results[f'{firstName.strip()} {lastName.strip()}'] = year
 
-    return results
-
-
-
-def getNewRefereesFromCSV(filename: str) -> dict:
-    """
-    Import Dianne's spreadsheet of new referees into CSV file.
-    """
-    results = {}
-    # Open the file
-    with open('newRefs/NewRefs2022Fall.csv') as fp:
-        csvFile = csv.reader(fp)
-
-        for row in csvFile:
-            try:
-                lastName = row[0].lower().strip()
-                firstName = row[1].lower().strip()
-            except IndexError:
-                pass
-            else:
-                # hack this one name cuz MSL is bonk
-                if firstName == "gabi":
-                    firstName = "gabi "
-                results[f'{firstName} {lastName}'] = 0
-
-    return results
+#     return results
 
 
 def getAllReferees() -> dict:
@@ -179,6 +63,8 @@ def getAllReferees() -> dict:
     Organize data from Dianne's MSL dump.
     """
     results = {}
+
+    ##  can we get rid of this step?  Get straight from web site
     # Open the Workbook
     workbook = load_workbook(filename = "newRefs/NewRefs10182022.xlsx")
     sheet = workbook.active
@@ -203,8 +89,11 @@ def getRefsAlreadyMentored() -> dict:
     """
     Pull the names of all referees already mentored this season
     """
-    db = RefereeDbCockroach()
-    retVal = db.getMentoringSessions()
+    retVal = []
+    sessions = db.getMentoringSessions()
+
+    for session in sessions:
+        retVal.append(f'{session[0].strip().lower()} {session[1].strip().lower()}')
 
     return retVal
 
@@ -304,54 +193,27 @@ def printout(currentu: list, newRefs: list, mentored: list, skip: bool, report: 
         print("** Referee has already had a mentor")
     print("")
 
-def check() -> None:
+
+def run(skip: bool) -> None:
+
     """
     Verify new referees have the same first and last name in MSL.
     """
-    newRefs = getNewRefereesFromGoogleSheet("newRefs/googlesheet.xlsx")
-    allRefs = getAllReferees()
+    newRefs = db.getNewReferees(2023)
+    br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
+    br.addheaders = [('User-agent', 'Chrome')]
 
-    for ref in newRefs.keys():
+    allRefs = getAllRefereesFromSite(br)
+
+    for ref in newRefs:
         if ref not in allRefs:
             print (f'Referee: {ref} not in MSL, check name spelling')
 
-
-def updateDatabase(newRefs: dict):
-    db = RefereeDbCockroach()
-    for k, v in newRefs.items():
-        first, last = k.split(" ")
-        if not db.findReferee(last, first):
-            db.addReferee(last, first, v)
-
-
-def addMentors(db) -> None:
-    mentors = [
-        ("david", "helfgott"),
-        ("david", "dunlap"),
-        ("diane", "florkowski"),
-        ("chuck", "o'reilly"),
-        ("martin", "cooley")
-    ]
-
-    for item in mentors:
-        if not db.mentorExists(item[0], item[1]):
-            db.addMentor(item[0], item[1])
-
-
-def run(skip: bool) -> None:
-    """"
+    """
     Gather the new referee data from Dianne and correlate with current week's assignment.
     """
-    # db maintenance for mentors
-    # addMentors()
-
-    # Get the new refs from Google Sheet and make sure db is up-to-date
-    newRefs = getNewRefereesFromGoogleSheet("newRefs/googlesheet.xlsx")
-    updateDatabase(newRefs)
 
     # get this week's current assignments
-    br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
-    br.addheaders = [('User-agent', 'Chrome')]
     current = getRealTimeCurrentRefAssignments(br)
 
     # get list of already mentored referees
@@ -385,18 +247,18 @@ def produceReport() -> None:
 
 if __name__ == "__main__":
 
-    sys.argv = ['streamlit', 'run', '--server.port', '443', 'ui.py']
-    stcli.main()
+    #sys.argv = ['streamlit', 'run', '--server.port', '443', 'ui.py']
+    #stcli.main()
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-i', '--input', dest='input', action='store_true', help='input a mentor report')
-    # parser.add_argument('-r', '--report', dest='report', action='store_true', help='run season report')
+    from uiData import getAllData
+    x = getAllData()
 
-    # args = parser.parse_args()
-    # if args.input:
-    #     inputMentorReport()
-    # elif args.report:
-    #     produceReport()
-    # else:
-    #     check()
-    #     run(skip = True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-r', '--report', dest='report', action='store_true', help='run season report')
+
+    args = parser.parse_args()
+
+    if args.report:
+        produceReport()
+    else:
+        run(skip = True)
