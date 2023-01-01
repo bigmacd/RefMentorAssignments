@@ -134,7 +134,17 @@ def getRefsAlreadyMentoredOld() -> list:
     return retVal
 
 
+def adjustDbNewRefs(inRefs: list) -> list:
+    # convert from list of tuples to list of strings
+    # [( 'martin', 'cooley')] -> [('martin cooley')]
+    retVal = []
+    for ref in inRefs:
+        retVal.append(f'{ref[0]} {ref[1]}')
+    return retVal
+
+
 def printout(currentu: list, newRefs: list, mentored: list, skip: bool, report: bool=False) -> None:
+
     current = {}
     for c in sorted(currentu):
         current[c] = currentu[c]
@@ -200,6 +210,8 @@ def run(skip: bool) -> None:
     Verify new referees have the same first and last name in MSL.
     """
     newRefs = db.getNewReferees(2023)
+    newRefs = adjustDbNewRefs(newRefs)
+
     br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
     br.addheaders = [('User-agent', 'Chrome')]
 
@@ -226,7 +238,7 @@ def run(skip: bool) -> None:
 
 def produceReport() -> None:
 
-    newRefs = getNewRefereesFromGoogleSheet("newRefs/googlesheet.xlsx")
+    newRefs = db.getNewReferees(2023)
 
     br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
     br.addheaders = [('User-agent', 'Chrome')]
@@ -249,9 +261,6 @@ if __name__ == "__main__":
 
     #sys.argv = ['streamlit', 'run', '--server.port', '443', 'ui.py']
     #stcli.main()
-
-    from uiData import getAllData
-    x = getAllData()
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--report', dest='report', action='store_true', help='run season report')
