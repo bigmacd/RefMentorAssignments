@@ -210,7 +210,6 @@ def run(skip: bool) -> None:
     Verify new referees have the same first and last name in MSL.
     """
     newRefs = db.getNewReferees(2023)
-    newRefs = adjustDbNewRefs(newRefs)
 
     br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
     br.addheaders = [('User-agent', 'Chrome')]
@@ -231,7 +230,9 @@ def run(skip: bool) -> None:
     # get list of already mentored referees
     mentored = getRefsAlreadyMentored()
 
-    #printout(current, newRefs)
+    # first adjust the format of data in newRefs from list of tuples
+    # (firstname, lastname) to list of strings "firstname lastname"
+    newRefs = adjustDbNewRefs(newRefs)
     printout(current, newRefs, mentored, skip)
     printout(current, newRefs, mentored, not skip)
 

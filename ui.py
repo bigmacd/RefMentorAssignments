@@ -1,21 +1,11 @@
-import mechanicalsoup
 import streamlit as st
+import time
 
 from database import RefereeDbCockroach
-from refWebSites import MySoccerLeague
 from uiData import getAllData
 
 
-# get all the data we can
-# br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
-# br.addheaders = [('User-agent', 'Chrome')]
-# site = MySoccerLeague(br)
-# dates = site.getAllDatesForSeason()
-
-#allMatchData = {}
-#for date in dates:
-#    allMatchData[date] = site.getMatches(date)
-
+# get all the data we can, avoids a bunch of calls to the website
 allMatchData = getAllData()
 dates = list(allMatchData.keys())
 
@@ -27,7 +17,21 @@ if 'date' not in st.session_state:
     st.session_state.date = 'date'
 if 'gameKey' not in st.session_state:
     st.session_state.gameKey = 'gameKey'
+if 'Center' not in st.session_state:
+    st.session_state.Center = 'center'
+if 'AR1' not in st.session_state:
+    st.session_state.AR1 = 'ar1'
+if 'AR2' not in st.session_state:
+    st.session_state.AR2 = 'ar2'
+if 'centercb' not in st.session_state:
+    st.session_state.centercb = False
+if 'ar1cb' not in st.session_state:
+    st.session_state.ar1cb = False
+if 'ar2db' not in st.session_state:
+    st.session_state.ar2cb = False
 
+#----------------------------------------------------
+# Specify the Mentor - mentors are pre-configured in the database
 mentors = db.getMentors()
 
 values = []
@@ -36,22 +40,29 @@ for mentor in mentors:
     values.append(entry)
 
 st.selectbox("Please select a mentor", values, key='mentorKey')
+#----------------------------------------------------
 
+
+#----------------------------------------------------
+# Specify the date - list of dates comes from MSL
 st.selectbox("Please select the date of the match:", dates, key='dateKey')
-
 dateInfo = st.session_state['dateKey']
+#----------------------------------------------------
 
+
+#----------------------------------------------------
+# Specify the venue - venues come from MSL for the date selected
 #matches = site.getMatches(st.session_state['dateKey'])
 matches = allMatchData[st.session_state['dateKey']]
-
 venues = list(matches.keys())
-
 st.selectbox("Select the venue:", venues, key='venue')
+#----------------------------------------------------
 
-# select a match
 
+#----------------------------------------------------
+# Specify which match - matches come from MSL for the date
+# and venue selected
 venueInfo = st.session_state['venue']
-
 games = matches[venueInfo]
 
 selectionList = []
@@ -66,35 +77,118 @@ currentMatch = None
 for game in games:
     if game['Time'] == gametime:
         currentMatch = game
+#----------------------------------------------------
 
-# for venue, matchdata in matches.items():
-#     for match in matchdata:
-#         if match['Time'] == gametime:
-#             currentMatch = match
+
+#----------------------------------------------------
+# which referees are we mentoring?
+centerCB = None
+AR1CB = None
+AR2CB = None
 
 with st.container():
-    st.write("Please make a note in the comments if this crew is different!")
+    st.write("Please select the new referees that were the focus of the mentoring:")
     col1, col2, col3 = st.columns(3)
+    disabled = None
     with col1:
-        st.button(f"Center: {currentMatch['Center']}", disabled=True)
+        disabled = True
+        refname = currentMatch['Center']
+        if refname != 'Not Used' and refname != 'None':
+            fname, lname = refname.split(' ')
+            if db.findReferee(lname, fname):
+                disabled = False
+        centerCB = st.checkbox(f"Center: {currentMatch['Center']}", disabled=disabled, key='centercb')
     with col2:
-        st.button(f"AR1: {currentMatch['AR1']}", disabled=True)
+        disabled = True
+        refname = currentMatch['AR1']
+        if refname != 'Not Used' and refname != 'None':
+            fname, lname = refname.split(' ')
+            if db.findReferee(lname, fname):
+                disabled = False
+        AR1CB = st.checkbox(f"AR1: {currentMatch['AR1']}", disabled=disabled, key='ar1cb')
     with col3:
-        st.button(f"AR2: {currentMatch['AR2']}", disabled=True)
+        disabled = True
+        refname = currentMatch['AR2']
+        if refname != 'Not Used' and refname != 'None':
+            fname, lname = refname.split(' ')
+            if db.findReferee(lname, fname):
+                disabled = False
+        AR2CB = st.checkbox(f"AR2: {currentMatch['AR2']}", disabled=disabled, key='ar2cb')
+#----------------------------------------------------
 
 
+#----------------------------------------------------
+# Enter the comments from the mentor
 st.text_area("Comments", height=400, key="comments")
+#----------------------------------------------------
 
+#----------------------------------------------------
+# This handles the clicking of the Save button
+# Save the mentor's comments for each of the selected
+# referees
 
 def doSave() -> None:
-    db.addMentorSession()
-    db.addMentorSession(st.session_state['mentor'])
+    # get mentor
+    mentor = st.session_state['mentorKey'].lower()
+
+    # checkbox states - only report for refs that have been selected
+    refs = [centerCB, AR1CB, AR2CB]
+    position = ['Center', 'AR1', 'AR2']
+
+    # tracks refs and the position they had
+    refIds = []
+
+    for i, ref in enumerate(refs):
+        if ref is True:
+            ref = currentMatch[position[i]]
+            refIds.append((ref, position[i]))
+    for id in refIds:
+        status, message = db.addMentorSession(mentor,
+                                              id[0].lower(), # referee
+                                              id[1], # position
+                                              st.session_state['dateKey'],
+                                              st.session_state['comments'])
+        if status:
+
+            if len(refIds) == 1:
+                st.balloons()
+
+            # announce the good news
+            box = st.success(message + f": Referee {id[0]}", icon="✅")
+
+            # set up the timer for clearing the message
+            time.sleep(5)
+            box.empty()
+
+            # reset the form
+            formReset()
+
+        else:
+            st.error(f'There was some kind of error: {message}', icon="🚨")
+#----------------------------------------------------
 
 
+#----------------------------------------------------
+# This handles the clicking of the Cancel button
+# reset the form
 def doCancel() -> None:
-    pass
+    formReset()
+#----------------------------------------------------
 
 
+#----------------------------------------------------
+# Reset the form
+def formReset() -> None:
+    # To Do - set the date to the most reset date?
+    # assuming this can be done
+
+    st.session_state['comments'] = ''
+    st.session_state['centercb'] = False
+    st.session_state['ar1cb'] = False
+    st.session_state['ar2cb'] = False
+
+#----------------------------------------------------
+# put the save and cancel buttons on the form
 col1, _, col3 = st.columns(3)
 with col1:
     st.button("Save", on_click = doSave, key="save")

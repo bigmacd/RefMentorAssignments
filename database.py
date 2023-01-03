@@ -2,6 +2,7 @@ import datetime
 import os
 import psycopg
 import sqlite3
+from typing import Tuple
 
 
 
@@ -94,11 +95,16 @@ class RefereeDb():
                          mentee: str,
                          position: str,
                          date: str,
-                         comments: str) -> None:
+                         comments: str) -> Tuple[bool, str]:
         sql = 'INSERT INTO mentor_sessions (mentor, mentee, position, date, comments) \
-               VALUES (?, ?, ?, ?, ?)'
+               VALUES (%s, %s, %s, %s, %s)'
         mentorId = self.findMentor(mentor.split(' ')[0], mentor.split(' ')[1])
         menteeId = self.findReferee(mentee.split(' ')[1], mentee.split(' ')[0])
+        if mentorId is None:
+            return (False, f'Could not find mentor details for {mentor}')
+        if menteeId is None:
+            return (False, f'Could not find referee details for {mentee}')
+
         dt = datetime.datetime.strptime(date, "%A, %B %d, %Y")
 
         try:
@@ -109,8 +115,10 @@ class RefereeDb():
                                 dt,
                                 comments])
         except Exception as ex:
-            print(ex)
-        self.connection.commit()
+            return (False, f'Failed to add mentor report: {ex}')
+        else:
+            self.connection.commit()
+            return (True, "Mentor Report successfully submitted!")
 
 
 class RefereeDbSqlite(RefereeDb):
