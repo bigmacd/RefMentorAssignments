@@ -5,11 +5,37 @@ import sqlite3
 from typing import Tuple
 
 
-
-class RefereeDb():
+class RefereeDbCockroach(object):
 
     def __init__(self):
-        pass
+        self.connection = psycopg.connect(os.environ['db_url'])
+        self.connection.autocommit = True
+        self.cursor = self.connection.cursor()
+        self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='referees'")
+        if not self.cursor.fetchone()[0] == 1:
+            self.createDb(self.cursor)
+
+
+    def createDb(self, cursor) -> bool:
+
+        sql = """CREATE TABLE referees (id SERIAL PRIMARY KEY,
+                                        lastname TEXT NOT NULL,
+                                        firstname TEXT NOT NULL,
+                                        year_certified INTEGER)"""
+        cursor.execute(sql)
+
+        sql = """CREATE TABLE mentors (id SERIAL PRIMARY KEY,
+                                        mentor_last_name TEXT NOT NULL,
+                                        mentor_first_name TEXT NOT NULL)"""
+        cursor.execute(sql)
+
+        sql = """CREATE TABLE mentor_sessions (id SERIAL PRIMARY KEY,
+                                                mentor INTEGER NOT NULL,
+                                                mentee INTEGER NOT NULL,
+                                                position TEXT NOT NULL,
+                                                date TIMESTAMP NOT NULL,
+                                                comments TEXT NOT NULL)"""
+        cursor.execute(sql)
 
 
     def _getRange(self) -> list:
@@ -80,29 +106,24 @@ class RefereeDb():
         return retVal
 
 
-    def getMentoringSessionDetails(self) -> dict:
+    def getMentoringSessionDetails(self, year: int) -> dict:
 
-        # figure out if it is the fall or spring season.  Get reports for just that
-        # range.
-        today = datetime.datetime.today()
-        year = today.year
-        spring = [f'{year}-01-01', f'{year}-06-30']
-        fall =   [f'{year}-07-01', f'{year}-12-31']
-        range = spring if today.month in (1, 2, 3, 4, 5, 6) else fall
-
-        retVal = {}
-        sql = f"select distinct r.lastname, r.firstname, ms.position, ms.date from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
+        range = [f'{year}-01-01', f'{year}-12-31']
+        sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments from mentor_sessions ms \
+                join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}' ORDER BY ms.date"
         r = self.cursor.execute(sql)
-        rows = r.fetchall()
-        for row in rows:
-            retVal[f'{row[1]} {row[0]}'] = [ row[2], row[3]]
-        return retVal
+        return r.fetchall()
 
 
     def getYears(self) -> list:
-        sql = f'select DISTINCT date from mentor_sessions'
+        retVal = []
+        sql = 'SELECT DISTINCT date from mentor_sessions'
         r = self.cursor.execute(sql)
-        return r.fetchall()
+        data = r.fetchall()
+        for d in data:
+            if d[0] not in retVal:
+                retVal.append(d[0].year)
+        return retVal
 
 
     # adding data
@@ -151,77 +172,33 @@ class RefereeDb():
             return (True, "Mentor Report successfully submitted!")
 
 
-    def produceReport(self):
+    def produceReport(self, year):
+
         retVal = ''
-        sessions = self.getMentoringSessions()
+        sessions = self.getMentoringSessionDetails(year)
+        # [0] is firstname, [1] is lastname, [2] is position
+        # [3] is date and [4] is comments
         sessionData = {}
+
         for session in sessions:
-            pass
+            date = session[3]
+            if date not in sessionData: # session[3] is date
+                sessionData[date] = []
 
+            sessionData[date].append(
+                {
+                    'ref': f'{session[0]} {session[1]}',
+                    'position': session[2],
+                    'comments': session[4]
+                })
 
-class RefereeDbSqlite(RefereeDb):
+        # build a big `ol string to returned as a download`
+        for k, entries in sessionData.items():
+            retVal += f'Date: {k}\r\n'
+            for entry in entries:
+                retVal += f"\tReferee: {entry['ref']}\r\n"
+                retVal += f"\tPosition: {entry['position']}\r\n"
+                retVal += f"\tComments: {entry['comments']}\r\n\r\n"
 
-    def __init__(self):
-        self.dbfilename = 'referees.db'
-        self.connection = sqlite3.connect(self.dbfilename)
-        self.connection.row_factory = sqlite3.Row
-        self.cursor = self.connection.cursor()
-        self.cursor.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='referees' ''')
-        if not self.cursor.fetchone()[0] == 1:
-            self.createDb(self.cursor)
-
-
-    def createDb(self, cursor) -> bool:
-        sql = """CREATE TABLE referees (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        lastname TEXT NOT NULL,
-                                        firstname TEXT NOT NULL,
-                                        year_certified INTEGER)"""
-        cursor.execute(sql)
-
-        sql = """CREATE TABLE mentors (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        mentor_last_name TEXT NOT NULL,
-                                        mentor_first_name TEXT NOT NULL)"""
-        cursor.execute(sql)
-
-        sql = """CREATE TABLE mentor_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                mentor INTEGER NOT NULL,
-                                                mentee INTEGER NOT NULL,
-                                                position TEXT NOT NULL,
-                                                date DATETIME NOT NULL,
-                                                comments BLOB NOT NULL)"""
-        cursor.execute(sql)
-
-
-
-class RefereeDbCockroach(RefereeDb):
-
-    def __init__(self):
-        self.connection = psycopg.connect(os.environ['db_url'])
-        self.connection.autocommit = True
-        self.cursor = self.connection.cursor()
-        self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='referees'")
-        if not self.cursor.fetchone()[0] == 1:
-            self.createDb(self.cursor)
-
-
-    def createDb(self, cursor) -> bool:
-
-        sql = """CREATE TABLE referees (id SERIAL PRIMARY KEY,
-                                        lastname TEXT NOT NULL,
-                                        firstname TEXT NOT NULL,
-                                        year_certified INTEGER)"""
-        cursor.execute(sql)
-
-        sql = """CREATE TABLE mentors (id SERIAL PRIMARY KEY,
-                                        mentor_last_name TEXT NOT NULL,
-                                        mentor_first_name TEXT NOT NULL)"""
-        cursor.execute(sql)
-
-        sql = """CREATE TABLE mentor_sessions (id SERIAL PRIMARY KEY,
-                                                mentor INTEGER NOT NULL,
-                                                mentee INTEGER NOT NULL,
-                                                position TEXT NOT NULL,
-                                                date TIMESTAMP NOT NULL,
-                                                comments TEXT NOT NULL)"""
-        cursor.execute(sql)
+        return retVal
 

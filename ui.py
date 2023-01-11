@@ -231,11 +231,6 @@ with col3:
 # Get the available years:
 years = db.getYears()
 
-values = []
-for year in years:
-    entry = year[0].year
-    values.append(entry)
-
 # just put some space so it's not obvious
 for _ in range(10):
     st.write("")
@@ -247,5 +242,5 @@ with st.container():
     with col2:
         st.write("Please select the year")
     with col3:
-        st.selectbox("_", values, key='yearKey', label_visibility='collapsed')
+        st.selectbox("_", years, key='yearKey', label_visibility='collapsed')
 #----------------------------------------------------
