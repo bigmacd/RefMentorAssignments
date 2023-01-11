@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+from typing import Tuple
 
 from database import RefereeDbCockroach
 from uiData import getAllData
@@ -27,8 +28,26 @@ if 'centercb' not in st.session_state:
     st.session_state.centercb = False
 if 'ar1cb' not in st.session_state:
     st.session_state.ar1cb = False
-if 'ar2db' not in st.session_state:
+if 'ar2cb' not in st.session_state:
     st.session_state.ar2cb = False
+if 'yearKey' not in st.session_state:
+    st.session_state.yearKey = []
+
+
+def parseRefName(name: str) -> Tuple[str, str]:
+    '''
+    This handles all the idiosyncrasies of peoples names as configured
+    in MSL.
+    '''
+    #st.write(f'refname: {name}')
+    parts = name.split(',') # see "Michael Aguilera, Sr."
+    #st.write(f'parts: {str(parts)}')
+    if len(parts) > 1:
+        return parts[0].split(' ')
+    parts = name.split(' ')
+    if len(parts) > 2:  # see 'Will Covey III'
+        return (parts[0], parts[1])
+    return parts
 
 #----------------------------------------------------
 # Specify the Mentor - mentors are pre-configured in the database
@@ -89,31 +108,31 @@ AR2CB = None
 with st.container():
     st.write("Please select the new referees that were the focus of the mentoring:")
     col1, col2, col3 = st.columns(3)
-    disabled = None
+    #disabled = False
     with col1:
-        disabled = True
+        #disabled = True
         refname = currentMatch['Center']
         if refname != 'Not Used' and refname != 'None':
-            fname, lname = refname.split(' ')
-            if db.findReferee(lname, fname):
-                disabled = False
-        centerCB = st.checkbox(f"Center: {currentMatch['Center']}", disabled=disabled, key='centercb')
+            fname, lname = parseRefName(refname)
+        #    if db.findReferee(lname, fname):
+        #        disabled = False
+        centerCB = st.checkbox(f"Center: {currentMatch['Center']}", key='centercb')
     with col2:
-        disabled = True
+        #disabled = True
         refname = currentMatch['AR1']
         if refname != 'Not Used' and refname != 'None':
-            fname, lname = refname.split(' ')
-            if db.findReferee(lname, fname):
-                disabled = False
-        AR1CB = st.checkbox(f"AR1: {currentMatch['AR1']}", disabled=disabled, key='ar1cb')
+            fname, lname = parseRefName(refname)
+        #    if db.findReferee(lname, fname):
+        #        disabled = False
+        AR1CB = st.checkbox(f"AR1: {currentMatch['AR1']}", key='ar1cb')
     with col3:
-        disabled = True
+        #disabled = True
         refname = currentMatch['AR2']
         if refname != 'Not Used' and refname != 'None':
-            fname, lname = refname.split(' ')
-            if db.findReferee(lname, fname):
-                disabled = False
-        AR2CB = st.checkbox(f"AR2: {currentMatch['AR2']}", disabled=disabled, key='ar2cb')
+            fname, lname = parseRefName(refname)
+        #    if db.findReferee(lname, fname):
+        #        disabled = False
+        AR2CB = st.checkbox(f"AR2: {currentMatch['AR2']}", key='ar2cb')
 #----------------------------------------------------
 
 
@@ -121,6 +140,13 @@ with st.container():
 # Enter the comments from the mentor
 st.text_area("Comments", height=400, key="comments")
 #----------------------------------------------------
+
+
+#----------------------------------------------------
+def runReport() -> None:
+    pass
+#----------------------------------------------------
+
 
 #----------------------------------------------------
 # This handles the clicking of the Save button
@@ -198,3 +224,28 @@ with col3:
     st.button("Cancel", on_click = doCancel, key = "cancel")
 
 
+#----------------------------------------------------
+# Put some space in and add a button to run a report
+# The report is a year-to-date
+
+# Get the available years:
+years = db.getYears()
+
+values = []
+for year in years:
+    entry = year[0].year
+    values.append(entry)
+
+# just put some space so it's not obvious
+for _ in range(10):
+    st.write("")
+
+with st.container():
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.button("Get Report", on_click = runReport)
+    with col2:
+        st.write("Please select the year")
+    with col3:
+        st.selectbox("_", values, key='yearKey', label_visibility='collapsed')
+#----------------------------------------------------

@@ -12,6 +12,17 @@ class RefereeDb():
         pass
 
 
+    def _getRange(self) -> list:
+        # figure out if it is the fall or spring season.  Get reports for just that
+        # range.
+        today = datetime.datetime.today()
+        year = today.year
+        spring = [f'{year}-01-01', f'{year}-06-30']
+        fall =   [f'{year}-07-01', f'{year}-12-31']
+        return spring if today.month in (1, 2, 3, 4, 5, 6) else fall
+
+
+
     # finding stuff
     def refExists(self, lastname: str, firstname:str) -> bool:
         sql = "SELECT id from referees where lastname = %s and firstname = %s"
@@ -57,6 +68,20 @@ class RefereeDb():
 
     def getMentoringSessions(self) -> dict:
 
+        range = self._getRange()
+
+        retVal = {}
+        sql = f"select distinct r.lastname, r.firstname, ms.position, ms.date from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
+        print(sql)
+        r = self.cursor.execute(sql)
+        rows = r.fetchall()
+        for row in rows:
+            retVal[f'{row[1]} {row[0]}'] = [ row[2], row[3]]
+        return retVal
+
+
+    def getMentoringSessionDetails(self) -> dict:
+
         # figure out if it is the fall or spring season.  Get reports for just that
         # range.
         today = datetime.datetime.today()
@@ -65,14 +90,19 @@ class RefereeDb():
         fall =   [f'{year}-07-01', f'{year}-12-31']
         range = spring if today.month in (1, 2, 3, 4, 5, 6) else fall
 
-
         retVal = {}
         sql = f"select distinct r.lastname, r.firstname, ms.position, ms.date from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
         r = self.cursor.execute(sql)
         rows = r.fetchall()
         for row in rows:
-            retVal[f'{row[1]} {row[0]}'] = [ row[2], row[3] ]
+            retVal[f'{row[1]} {row[0]}'] = [ row[2], row[3]]
         return retVal
+
+
+    def getYears(self) -> list:
+        sql = f'select DISTINCT date from mentor_sessions'
+        r = self.cursor.execute(sql)
+        return r.fetchall()
 
 
     # adding data
@@ -119,6 +149,14 @@ class RefereeDb():
         else:
             self.connection.commit()
             return (True, "Mentor Report successfully submitted!")
+
+
+    def produceReport(self):
+        retVal = ''
+        sessions = self.getMentoringSessions()
+        sessionData = {}
+        for session in sessions:
+            pass
 
 
 class RefereeDbSqlite(RefereeDb):
