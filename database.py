@@ -109,8 +109,10 @@ class RefereeDbCockroach(object):
     def getMentoringSessionDetails(self, year: int) -> dict:
 
         range = [f'{year}-01-01', f'{year}-12-31']
-        sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments from mentor_sessions ms \
-                join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}' ORDER BY ms.date"
+        sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name \
+              from mentor_sessions ms \
+              join referees r on ms.mentee = r.id join mentors me on ms.mentor = me.id \
+              where ms.date between '{range[0]}' and '{range[1]}' ORDER BY ms.date"
         r = self.cursor.execute(sql)
         return r.fetchall()
 
@@ -187,8 +189,9 @@ class RefereeDbCockroach(object):
 
             sessionData[date].append(
                 {
-                    'ref': f'{session[0]} {session[1]}',
+                    'ref': f'{session[0].capitalize()} {session[1].capitalize()}',
                     'position': session[2],
+                    'mentor': f'{session[6].capitalize()} {session[5].capitalize()}',
                     'comments': session[4]
                 })
 
@@ -198,6 +201,7 @@ class RefereeDbCockroach(object):
             for entry in entries:
                 retVal += f"\tReferee: {entry['ref']}\r\n"
                 retVal += f"\tPosition: {entry['position']}\r\n"
+                retVal += f"\tMentor: {entry['mentor']}\r\n"
                 retVal += f"\tComments: {entry['comments']}\r\n\r\n"
 
         return retVal

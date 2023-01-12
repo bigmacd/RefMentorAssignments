@@ -11,6 +11,7 @@ allMatchData = getAllData()
 dates = list(allMatchData.keys())
 
 db = RefereeDbCockroach()
+reportData = ''
 
 if 'mentor' not in st.session_state:
     st.session_state.mentor = 'mentor'
@@ -30,8 +31,17 @@ if 'ar1cb' not in st.session_state:
     st.session_state.ar1cb = False
 if 'ar2cb' not in st.session_state:
     st.session_state.ar2cb = False
+if 'reportIndex' not in st.session_state:
+    st.session_state.reportIndex = 0
+if 'downloadButtonEnabled' not in st.session_state:
+    st.session_state.downloadButtonEnabled = True
+
+selectionBoxData = [' ']
+yearData = db.getYears()
+for year in yearData:
+    selectionBoxData.append(year)
 if 'yearKey' not in st.session_state:
-    st.session_state.yearKey = []
+    st.session_state.yearKey = selectionBoxData
 
 
 def parseRefName(name: str) -> Tuple[str, str]:
@@ -144,7 +154,18 @@ st.text_area("Comments", height=400, key="comments")
 
 #----------------------------------------------------
 def runReport() -> None:
-    pass
+    global reportData
+    year = st.session_state.reportSelection
+    if year == ' ' or year is None:
+        return
+    reportData = db.produceReport(year)
+    st.session_state.downloadButtonEnabled = False
+
+    st.download_button("Download Data",
+                    data=reportData,
+                    disabled=st.session_state.downloadButtonEnabled,
+                    mime='text/plain')
+
 #----------------------------------------------------
 
 
@@ -212,6 +233,7 @@ def formReset() -> None:
     st.session_state['centercb'] = False
     st.session_state['ar1cb'] = False
     st.session_state['ar2cb'] = False
+    st.session_state.downloadButtonEnabled = True
 
 #----------------------------------------------------
 # put the save and cancel buttons on the form
@@ -228,19 +250,25 @@ with col3:
 # Put some space in and add a button to run a report
 # The report is a year-to-date
 
+values = ['']
 # Get the available years:
 years = db.getYears()
+for year in years:
+    values.append(year)
 
 # just put some space so it's not obvious
 for _ in range(10):
     st.write("")
 
-with st.container():
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.button("Get Report", on_click = runReport)
-    with col2:
-        st.write("Please select the year")
-    with col3:
-        st.selectbox("_", years, key='yearKey', label_visibility='collapsed')
+with st.expander("Reporting") as e:
+
+    st.empty()
+    st.selectbox("Please select the year",
+                 options=st.session_state.yearKey,
+                 key='reportSelection',
+                 on_change=runReport) #,
+                 #index=st.session_state.reportIndex)
+    #st.session_state.reportIndex = st.session_state.yearKey.index(st.session_state.reportSelection)
+    st.empty()
+
 #----------------------------------------------------
