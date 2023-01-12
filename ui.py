@@ -31,7 +31,7 @@ if 'ar1cb' not in st.session_state:
 if 'ar2cb' not in st.session_state:
     st.session_state.ar2cb = False
 if 'yearKey' not in st.session_state:
-    st.session_state.yearKey = 'year'
+    st.session_state.yearKey = []
 
 
 def parseRefName(name: str) -> Tuple[str, str]:

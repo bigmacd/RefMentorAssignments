@@ -121,8 +121,8 @@ class RefereeDbCockroach(object):
         r = self.cursor.execute(sql)
         data = r.fetchall()
         for d in data:
-            if d[0] not in retVal:
-                retVal.append(str(d[0].year))
+            if d[0].year not in retVal:
+                retVal.append(d[0].year)
         return retVal
 
 
