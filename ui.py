@@ -1,3 +1,4 @@
+from datetime import datetime as dtime
 import streamlit as st
 import time
 from typing import Tuple
@@ -59,6 +60,15 @@ def parseRefName(name: str) -> Tuple[str, str]:
         return (parts[0], parts[1])
     return parts
 
+
+def getCurrentDateIndex(dates: list) -> int:
+    today = dtime.now()
+    for index, d in enumerate(dates):
+        thisDate = dtime.strptime(d, "%A, %B %d, %Y")
+        if thisDate > today:
+            return index
+
+
 #----------------------------------------------------
 # Specify the Mentor - mentors are pre-configured in the database
 mentors = db.getMentors()
@@ -74,7 +84,8 @@ st.selectbox("Please select a mentor", values, key='mentorKey')
 
 #----------------------------------------------------
 # Specify the date - list of dates comes from MSL
-st.selectbox("Please select the date of the match:", dates, key='dateKey')
+dateIndex = getCurrentDateIndex(dates)
+st.selectbox("Please select the date of the match:", dates, index=dateIndex, key='dateKey')
 dateInfo = st.session_state['dateKey']
 #----------------------------------------------------
 

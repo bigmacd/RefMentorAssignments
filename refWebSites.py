@@ -132,7 +132,7 @@ class MySoccerLeague(RefereeWebSite):
 
 
     def getAllDatesForSeason(self) -> list:
-        url = "https://mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=futureDates".format(self._loginKey)
+        url = "https://mysoccerleague.com/ViewRefAssignments.jsp?YSLkey={0}&seasonId=0&leagueId=91&dateMode=allDates".format(self._loginKey)
 
         page = self._browser.open(url)
         box = page.soup.find("td", { "class" : 'tblborderforms', 'align' : 'center' })
