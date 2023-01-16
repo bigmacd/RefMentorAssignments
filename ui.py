@@ -206,12 +206,11 @@ def doSave() -> None:
             # set up the timer for clearing the message
             time.sleep(5)
             box.empty()
-
-            # reset the form
-            formReset()
-
         else:
             st.error(f'There was some kind of error: {message}', icon="🚨")
+
+    # reset the form
+    formReset()
 #----------------------------------------------------
 
 
