@@ -269,30 +269,30 @@ class MySoccerLeague(RefereeWebSite):
                         # handle weirdness in MSL (three part names, extra spaces, etc.)
 
                         last = None
-                        match f:
-                            case 'Alexandre':
-                                if l == 'de':
-                                    last = l + ' ' + x
-                            case 'Will':
-                                if l == 'Covey' and x == 'III':
-                                    last = l + ' ' + x
-                            case 'Gabriella':
-                                if l == '(Brie)':
-                                    last = l + ' ' + x
-                            case 'Sophie':
-                                if x == 'Hinton':
-                                    last = x
-                            case 'Vivienne':
-                                if x == 'Huang':
-                                    last = x
-                            case 'Andrew':
-                                if x == 'Teale':
-                                    last = x
-                            case 'Gabi':
-                                if x == 'Konde':
-                                    last = x
-                            case _:
-                                print(f'Error parsing: {refereeFullName}: f: {f} l: {l}, x:{x}')
+
+                        if f == 'Alexandre':
+                            if l == 'de':
+                                last = l + ' ' + x
+                        elif f == 'Will':
+                            if l == 'Covey' and x == 'III':
+                                last = l + ' ' + x
+                        elif f == 'Gabriella':
+                            if l == '(Brie)':
+                                last = l + ' ' + x
+                        elif f == 'Sophie':
+                            if x == 'Hinton':
+                                last = x
+                        elif f == 'Vivienne':
+                            if x == 'Huang':
+                                last = x
+                        elif f == 'Andrew':
+                            if x == 'Teale':
+                                last = x
+                        elif f == 'Gabi':
+                            if x == 'Konde':
+                                last = x
+                        else:
+                            print(f'Error parsing: {refereeFullName}: f: {f} l: {l}, x:{x}')
 
                         if last is None:
                             print(f'Error parsing: {refereeFullName}: f: {f} l: {l}, x:{x}')
