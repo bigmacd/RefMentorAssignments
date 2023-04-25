@@ -32,10 +32,25 @@ if 'ar1cb' not in st.session_state:
     st.session_state.ar1cb = False
 if 'ar2cb' not in st.session_state:
     st.session_state.ar2cb = False
+if 'revisitCenter' not in st.session_state:
+    st.session_state.revisitCenter = False
+if 'revisitAR1' not in st.session_state:
+    st.session_state.revisitAR2 = False
+if 'revisitAR2' not in st.session_state:
+    st.session_state.revisitAR2 = False
 if 'reportIndex' not in st.session_state:
     st.session_state.reportIndex = 0
 if 'downloadButtonEnabled' not in st.session_state:
     st.session_state.downloadButtonEnabled = True
+if 'centerMessageBox' not in st.session_state:
+    st.session_state.centerMessageBox = None
+if 'ar1MessageBox' not in st.session_state:
+    st.session_state.ar1MessageBox = None
+if 'ar2MessageBox' not in st.session_state:
+    st.session_state.ar2MessageBox = None
+# if 'dateKey' not in st.session_state:
+#     st.session_state.dateKey = 'dates'
+
 
 selectionBoxData = [' ']
 yearData = db.getYears()
@@ -163,6 +178,35 @@ st.text_area("Comments", height=400, key="comments")
 #----------------------------------------------------
 
 
+def revisitCenterCB():
+    print("in revisitCenterCB")
+    if st.session_state.centerMessageBox is not None:
+        st.session_state.centerMessageBox.empty()
+    if centerCB is False:
+        st.session_state.centerMessageBox = st.error("To request a revisit for center, the Center should be selected as a mentee", icon="🚨")
+        st.session_state.revisitCenter = st.checkbox('Should Center be revisited?', on_change=revisitCenterCB, value = False)
+
+def revisitAR1CB():
+    pass
+
+
+def revisitAR2CB():
+    pass
+
+
+#----------------------------------------------------
+# Checkboxes to indicate if a referee should be revisted
+with st.container():
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        revisitCenter = st.checkbox('Should Center be revisited?', key='revisitCenter')
+    with col2:
+        revisitAR1 = st.checkbox('Should AR1 be revisited?', key='revisitAR1', on_change=revisitAR1CB)
+    with col3:
+        revisitAR2 = st.checkbox('Should AR2 be revisited?', key='revisitAR2', on_change=revisitAR2CB)
+#----------------------------------------------------
+
+
 #----------------------------------------------------
 def runReport() -> None:
     global reportData
@@ -181,11 +225,22 @@ def runReport() -> None:
 
 
 #----------------------------------------------------
+# This handles the clicking of the Cancel button
+# reset the form
+def doCancel() -> None:
+    formReset()
+#----------------------------------------------------
+
+
+#----------------------------------------------------
 # This handles the clicking of the Save button
 # Save the mentor's comments for each of the selected
 # referees
 
 def doSave() -> None:
+
+    global messagebox
+
     # get mentor
     mentor = st.session_state['mentorKey'].lower()
 
@@ -201,22 +256,34 @@ def doSave() -> None:
             ref = currentMatch[position[i]]
             refIds.append((ref, position[i]))
     for id in refIds:
-        status, message = db.addMentorSession(mentor,
-                                              id[0].lower(), # referee
-                                              id[1], # position
-                                              st.session_state['dateKey'],
-                                              st.session_state['comments'])
+        # status, message = db.addMentorSession(mentor,
+        #                                       id[0].lower(), # referee
+        #                                       id[1], # position
+        #                                       st.session_state['dateKey'],
+        #                                       st.session_state['comments'])
+
+        revisit = (id[1] == "Center" and st.session_state.revisitCenter is True) or \
+           (id[1] == "AR1" and st.session_state.revisitAR1 is True) or \
+           (id[1] == "AR2" and st.session_state.revisitAR2 is True)
+        status, message = db.addMentorSessionNew(mentor,
+                                                 id[0].lower(), # referee
+                                                 id[1], # position
+                                                 st.session_state['dateKey'],
+                                                 st.session_state['comments'],
+                                                 revisit)
+
         if status:
 
             if len(refIds) == 1:
                 st.balloons()
 
             # announce the good news
-            box = st.success(message + f": Referee {id[0]}", icon="✅")
+            #box = st.success(message + f": Referee {id[0]}", icon="✅")
+            messagebox = st.success(message + f": Referee {id[0]}", icon="✅")
 
             # set up the timer for clearing the message
             time.sleep(5)
-            box.empty()
+            messagebox.empty()
         else:
             st.error(f'There was some kind of error: {message}', icon="🚨")
 
@@ -224,26 +291,6 @@ def doSave() -> None:
     formReset()
 #----------------------------------------------------
 
-
-#----------------------------------------------------
-# This handles the clicking of the Cancel button
-# reset the form
-def doCancel() -> None:
-    formReset()
-#----------------------------------------------------
-
-
-#----------------------------------------------------
-# Reset the form
-def formReset() -> None:
-    # To Do - set the date to the most reset date?
-    # assuming this can be done
-
-    st.session_state['comments'] = ''
-    st.session_state['centercb'] = False
-    st.session_state['ar1cb'] = False
-    st.session_state['ar2cb'] = False
-    st.session_state.downloadButtonEnabled = True
 
 #----------------------------------------------------
 # put the save and cancel buttons on the form
@@ -254,6 +301,9 @@ with col1:
 #     st.button(f"AR1: {currentMatch['AR1']}")
 with col3:
     st.button("Cancel", on_click = doCancel, key = "cancel")
+
+#----------------------------------------------------
+
 
 
 #----------------------------------------------------
@@ -281,4 +331,20 @@ with st.expander("Reporting") as e:
     #st.session_state.reportIndex = st.session_state.yearKey.index(st.session_state.reportSelection)
     st.empty()
 
+#----------------------------------------------------
+
+#----------------------------------------------------
+# Reset the form
+def formReset() -> None:
+    # To Do - set the date to the most reset date?
+    # assuming this can be done
+
+    st.session_state['comments'] = ''
+    st.session_state['centercb'] = False
+    st.session_state['ar1cb'] = False
+    st.session_state['ar2cb'] = False
+    st.session_state['revisitCenter'] = False
+    st.session_state['revisitAR1'] = False
+    st.session_state['revisitAR2'] = False
+    st.session_state.downloadButtonEnabled = True
 #----------------------------------------------------

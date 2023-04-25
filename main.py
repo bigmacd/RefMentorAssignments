@@ -1,15 +1,11 @@
 import argparse
-import csv
 import datetime
 import mechanicalsoup
-from openpyxl import load_workbook
-import os
-#from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog, yes_no_dialog
-from streamlit.web import cli as stcli
-import sys
+
 
 from database import RefereeDbCockroach
 from refWebSites import MySoccerLeague
+from googleSheets import getRefsFromGoogleSignupSheet
 
 db = RefereeDbCockroach()
 
@@ -32,57 +28,31 @@ def getAllRefereesFromSite(br: mechanicalsoup.stateful_browser.StatefulBrowser) 
     return site.getAllReferees()
 
 
-# def getNewRefereesFromGoogleSheet(filename: str) -> dict:
+# def getAllReferees() -> dict:
+#     """
+#     Organize data from Dianne's MSL dump.
+#     """
 #     results = {}
 
+#     ##  can we get rid of this step?  Get straight from web site
 #     # Open the Workbook
-#     workbook = load_workbook(filename = filename)
+#     workbook = load_workbook(filename = "newRefs/NewRefs10182022.xlsx")
 #     sheet = workbook.active
 
 #     # Iterate the rows
+#     index = 0
 #     for row in sheet.iter_rows(min_row = 2):
 
-#         if row[0].value == None:
+#         lastName = row[7].value.lower().strip()
+#         firstName = row[6].value.lower().strip()
+#         id = row[2].value
+
+#         if index > 30 and lastName == '':
 #             break
 
-#         name = row[2].value.lower().strip()
-#         lastName, firstName = name.split(',')
-
-#         year = row[7].value.year
-
-#         if lastName == '':
-#             break
-
-#         results[f'{firstName.strip()} {lastName.strip()}'] = year
-
+#         results[f'{firstName} {lastName}'] = id
+#         index += 1
 #     return results
-
-
-def getAllReferees() -> dict:
-    """
-    Organize data from Dianne's MSL dump.
-    """
-    results = {}
-
-    ##  can we get rid of this step?  Get straight from web site
-    # Open the Workbook
-    workbook = load_workbook(filename = "newRefs/NewRefs10182022.xlsx")
-    sheet = workbook.active
-
-    # Iterate the rows
-    index = 0
-    for row in sheet.iter_rows(min_row = 2):
-
-        lastName = row[7].value.lower().strip()
-        firstName = row[6].value.lower().strip()
-        id = row[2].value
-
-        if index > 30 and lastName == '':
-            break
-
-        results[f'{firstName} {lastName}'] = id
-        index += 1
-    return results
 
 
 def getRefsAlreadyMentored() -> dict:
@@ -90,48 +60,43 @@ def getRefsAlreadyMentored() -> dict:
     Pull the names of all referees already mentored this season
     """
     retVal = []
-    sessions = db.getMentoringSessions()
-
-    for session in sessions:
-        retVal.append(f'{session[0].strip().lower()} {session[1].strip().lower()}')
-
-    return retVal
+    return db.getMentoringSessions()
 
 
-def getRefsAlreadyMentoredOld() -> list:
-    """
-    Pull the names of all referees already mentored this season
-    """
-    retVal = []
-    for x in os.listdir('reports/fall2022'):
-        # these filenames are firstname_lastname.txt
-        if x.endswith(".txt"):
-            filename = x.split('.')
-            refName = filename[0].split('_')
-            retVal.append(f'{refName[0].strip().lower()} {refName[1].strip().lower()}')
-            # workbook = load_workbook(filename = f'reports/{x}')
-            # sheet = workbook.active
+# def getRefsAlreadyMentoredOld() -> list:
+#     """
+#     Pull the names of all referees already mentored this season
+#     """
+#     retVal = []
+#     for x in os.listdir('reports/fall2022'):
+#         # these filenames are firstname_lastname.txt
+#         if x.endswith(".txt"):
+#             filename = x.split('.')
+#             refName = filename[0].split('_')
+#             retVal.append(f'{refName[0].strip().lower()} {refName[1].strip().lower()}')
+#             # workbook = load_workbook(filename = f'reports/{x}')
+#             # sheet = workbook.active
 
-            # # Iterate the rows
-            # for i, row in enumerate(sheet.iter_rows(min_row = 2)):
-            #     center = row[5].value
+#             # # Iterate the rows
+#             # for i, row in enumerate(sheet.iter_rows(min_row = 2)):
+#             #     center = row[5].value
 
-            #     if center == '' or center is None:
-            #         break
+#             #     if center == '' or center is None:
+#             #         break
 
-            #     center = center.lower().strip()
-            #     retVal.append(center)
+#             #     center = center.lower().strip()
+#             #     retVal.append(center)
 
-            #     ar1 = row[6].value
-            #     if ar1 is not None and ar1 != 'n/a':
-            #         ar1 = ar1.lower().strip()
-            #         retVal.append(ar1)
-            #     ar2 = row[7].value
-            #     if ar2 is not None and ar1 != 'n/a':
-            #         ar2 = ar2.lower().strip()
-            #         retVal.append(ar2)
+#             #     ar1 = row[6].value
+#             #     if ar1 is not None and ar1 != 'n/a':
+#             #         ar1 = ar1.lower().strip()
+#             #         retVal.append(ar1)
+#             #     ar2 = row[7].value
+#             #     if ar2 is not None and ar1 != 'n/a':
+#             #         ar2 = ar2.lower().strip()
+#             #         retVal.append(ar2)
 
-    return retVal
+#     return retVal
 
 
 def adjustDbNewRefs(inRefs: list) -> list:
@@ -207,6 +172,14 @@ def printout(currentu: list, newRefs: list, mentored: list, skip: bool, report: 
 def run(skip: bool) -> None:
 
     """
+    Make sure database is up-to-date with VYS new referee spreadsheet
+    """
+    latestRefs = getRefsFromGoogleSignupSheet()
+    for ref in latestRefs:
+        if not db.refExists(ref[0], ref[1]):
+            db.addReferee(ref[0], ref[1], ref[2])
+
+    """
     Verify new referees have the same first and last name in MSL.
     """
     newRefs = db.getNewReferees(2023)
@@ -233,7 +206,7 @@ def run(skip: bool) -> None:
     # first adjust the format of data in newRefs from list of tuples
     # (firstname, lastname) to list of strings "firstname lastname"
     newRefs = adjustDbNewRefs(newRefs)
-    printout(current, newRefs, mentored, skip)
+    #printout(current, newRefs, mentored, skip)
     printout(current, newRefs, mentored, not skip)
 
 

@@ -1,7 +1,6 @@
-import datetime
+from datetime import datetime, timedelta
 import os
 import psycopg
-import sqlite3
 from typing import Tuple
 
 
@@ -37,11 +36,24 @@ class RefereeDbCockroach(object):
                                                 comments TEXT NOT NULL)"""
         cursor.execute(sql)
 
+        sql = """CREATE TABLE risky (id SERIAL PRIMARY KEY,
+                                     mentee INTEGER NOT NULL,
+                                     mentor_session INTEGER NOT NULL,
+                                     date TIMESTAMP NOT NULL DEFAULT NOW())"""
+        cursor.execute(sql)
 
-    def _getRange(self) -> list:
+
+    def _getRiskRange(self) -> list:
+        today = datetime.today()
+
+        oneMonthAgo = today - timedelta(days=31)
+        return [oneMonthAgo, today]
+
+
+    def _getSeasonRange(self) -> list:
         # figure out if it is the fall or spring season.  Get reports for just that
         # range.
-        today = datetime.datetime.today()
+        today = datetime.today()
         year = today.year
         spring = [f'{year}-01-01', f'{year}-06-30']
         fall =   [f'{year}-07-01', f'{year}-12-31']
@@ -50,6 +62,26 @@ class RefereeDbCockroach(object):
 
 
     # finding stuff
+
+    def isRisky(self, lastname: str, firstname: str) -> bool:
+
+        # get today's date and look into the risky table from today back one month
+        # if the referee is in the risky table, return true
+
+        range = self._getRiskRange()
+
+        mentee = self.findReferee(lastname, firstname)
+        if mentee is None:
+            return False
+
+        menteeId = mentee[0]
+
+        sql = f"SELECT * FROM risky WHERE mentee = {menteeId} and date between '{range[0]}' and '{range[1]}'"
+        r = self.cursor.execute(sql)
+
+        return len(r.fetchall()) > 0
+
+
     def refExists(self, lastname: str, firstname:str) -> bool:
         sql = "SELECT id from referees where lastname = %s and firstname = %s"
         r = self.cursor.execute(sql, (lastname.lower(), firstname.lower()))
@@ -94,11 +126,10 @@ class RefereeDbCockroach(object):
 
     def getMentoringSessions(self) -> dict:
 
-        range = self._getRange()
+        range = self._getSeasonRange()
 
         retVal = {}
         sql = f"select distinct r.lastname, r.firstname, ms.position, ms.date from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
-        print(sql)
         r = self.cursor.execute(sql)
         rows = r.fetchall()
         for row in rows:
@@ -129,6 +160,13 @@ class RefereeDbCockroach(object):
 
 
     # adding data
+    def setIsRisky(self, mentee: int, mentorSession: int, dt: datetime):
+        sql = "INSERT into risky (mentee, mentor_session, date) \
+               VALUES (%s, %s, %s)"
+        self.cursor.execute(sql, (mentee, mentorSession, dt))
+        self.connection.commit()
+
+
     def addReferee(self, lastname: str, firstname: str, year: int):
         sql = "INSERT INTO referees (lastname, firstname, year_certified) \
                VALUES (%s, %s, %s)"
@@ -158,7 +196,7 @@ class RefereeDbCockroach(object):
         if menteeId is None:
             return (False, f'Could not find referee details for {mentee}')
 
-        dt = datetime.datetime.strptime(date, "%A, %B %d, %Y")
+        dt = datetime.strptime(date, "%A, %B %d, %Y")
 
         try:
             self.cursor.execute(sql,
@@ -172,6 +210,46 @@ class RefereeDbCockroach(object):
         else:
             self.connection.commit()
             return (True, "Mentor Report successfully submitted!")
+
+
+    def addMentorSessionNew(self,
+                            mentor: str,
+                            mentee: str,
+                            position: str,
+                            date: str,
+                            comments: str,
+                            isRisky: bool) -> Tuple[bool, str]:
+        if not isRisky:
+            return self.addMentorSession(mentor, mentee, position, date, comments)
+
+
+        sql = 'INSERT INTO mentor_sessions (mentor, mentee, position, date, comments) \
+               VALUES (%s, %s, %s, %s, %s) RETURNING id'
+        mentorId = self.findMentor(mentor.split(' ')[0], mentor.split(' ')[1])
+        menteeId = self.findReferee(mentee.split(' ')[1], mentee.split(' ')[0])
+        if mentorId is None:
+            return (False, f'Could not find mentor details for {mentor}')
+        if menteeId is None:
+            return (False, f'Could not find referee details for {mentee}')
+
+        dt = datetime.strptime(date, "%A, %B %d, %Y")
+
+        try:
+            self.cursor.execute(sql,
+                                [mentorId[0],
+                                menteeId[0],
+                                position,
+                                dt,
+                                comments])
+            newId = self.cursor.fetchone()[0]
+
+        except Exception as ex:
+            return (False, f'Failed to add mentor report: {ex}')
+        else:
+            self.connection.commit()
+            self.setIsRisky(menteeId[0], newId, dt)
+            return (True, "Mentor Report successfully submitted!")
+
 
 
     def produceReport(self, year):
