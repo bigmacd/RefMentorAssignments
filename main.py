@@ -63,48 +63,20 @@ def getRefsAlreadyMentored() -> dict:
     return db.getMentoringSessions()
 
 
-# def getRefsAlreadyMentoredOld() -> list:
-#     """
-#     Pull the names of all referees already mentored this season
-#     """
-#     retVal = []
-#     for x in os.listdir('reports/fall2022'):
-#         # these filenames are firstname_lastname.txt
-#         if x.endswith(".txt"):
-#             filename = x.split('.')
-#             refName = filename[0].split('_')
-#             retVal.append(f'{refName[0].strip().lower()} {refName[1].strip().lower()}')
-#             # workbook = load_workbook(filename = f'reports/{x}')
-#             # sheet = workbook.active
-
-#             # # Iterate the rows
-#             # for i, row in enumerate(sheet.iter_rows(min_row = 2)):
-#             #     center = row[5].value
-
-#             #     if center == '' or center is None:
-#             #         break
-
-#             #     center = center.lower().strip()
-#             #     retVal.append(center)
-
-#             #     ar1 = row[6].value
-#             #     if ar1 is not None and ar1 != 'n/a':
-#             #         ar1 = ar1.lower().strip()
-#             #         retVal.append(ar1)
-#             #     ar2 = row[7].value
-#             #     if ar2 is not None and ar1 != 'n/a':
-#             #         ar2 = ar2.lower().strip()
-#             #         retVal.append(ar2)
-
-#     return retVal
-
-
 def adjustDbNewRefs(inRefs: list) -> list:
     # convert from list of tuples to list of strings
     # [( 'martin', 'cooley')] -> [('martin cooley')]
     retVal = []
     for ref in inRefs:
         retVal.append(f'{ref[0]} {ref[1]}')
+    return retVal
+
+
+def getRiskyRefs() -> list:
+    retVal = []
+    refs = db.getRisky()
+    for ref in refs:
+        retVal.append(f'{ref[1]} {ref[0]}')
     return retVal
 
 
@@ -169,7 +141,59 @@ def printout(currentu: list, newRefs: list, mentored: list, skip: bool, report: 
     print("")
 
 
-def run(skip: bool) -> None:
+def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list) -> None:
+
+    current = {}
+    for c in sorted(currentu):
+        current[c] = currentu[c]
+
+    for field, details in current.items():
+        fieldsOnce = False
+        for game in details:
+
+            center = details[game]['Center'].lower()
+            ar1 = details[game]['AR1'].lower()
+            ar2 = details[game]['AR2'].lower()
+
+            if center not in newRefs and ar1 not in newRefs and ar2 not in newRefs:
+                continue
+
+            cmarker = '**' if center in mentored else ''
+            a1marker = '**' if ar1 in mentored else ''
+            a2marker = '**' if ar2 in mentored else ''
+
+            crisky = '##' if center in risky else ''
+            a1risky = '##' if ar1 in risky else ''
+            a2risky = '##' if ar2 in risky else ''
+
+
+            if not fieldsOnce:
+                print("")
+                print(f'Field: {field}')
+                fieldsOnce = True
+
+            date = details[game]['date']
+            gameTime = details[game]['gameTime']
+            age = details[game]['age']
+            level = details[game]['level']
+
+            print(f'\tID: {game}, Date: {date}, Time: {gameTime}, Age: {age}, Level: {level}')
+
+            if center in newRefs:
+                print(f'\t\tNew Ref at Center: {center.title()}{cmarker} {crisky}')
+
+            if ar1 in newRefs:
+                print(f'\t\tNew Ref at AR1: {ar1.title()}{a1marker} {a1risky}')
+
+            if ar2 in newRefs:
+                print(f'\t\tNew Ref at AR2: {ar2.title()}{a2marker} {a2risky}')
+
+    print("** Referee has already had a mentor")
+    print("## Referee has been flagged as needing additional help")
+    print("")
+
+
+def run() -> None:
 
     """
     Make sure database is up-to-date with VYS new referee spreadsheet
@@ -193,21 +217,23 @@ def run(skip: bool) -> None:
         if ref not in allRefs:
             print (f'Referee: {ref} not in MSL, check name spelling')
 
-    """
-    Gather the new referee data from Dianne and correlate with current week's assignment.
-    """
-
     # get this week's current assignments
     current = getRealTimeCurrentRefAssignments(br)
 
     # get list of already mentored referees
     mentored = getRefsAlreadyMentored()
 
+    # get the list of risky refs (those needing to be seen again)
+    risky = getRiskyRefs()
+
     # first adjust the format of data in newRefs from list of tuples
     # (firstname, lastname) to list of strings "firstname lastname"
     newRefs = adjustDbNewRefs(newRefs)
+
+    generateWorkload(current, newRefs, mentored, risky)
+
     #printout(current, newRefs, mentored, skip)
-    printout(current, newRefs, mentored, not skip)
+    #printout(current, newRefs, mentored, not skip)
 
 
 def produceReport() -> None:
@@ -233,9 +259,6 @@ def produceReport() -> None:
 
 if __name__ == "__main__":
 
-    #sys.argv = ['streamlit', 'run', '--server.port', '443', 'ui.py']
-    #stcli.main()
-
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--report', dest='report', action='store_true', help='run season report')
 
@@ -244,4 +267,4 @@ if __name__ == "__main__":
     if args.report:
         produceReport()
     else:
-        run(skip = True)
+        run()

@@ -82,6 +82,14 @@ class RefereeDbCockroach(object):
         return len(r.fetchall()) > 0
 
 
+    def getRisky(self) -> list:
+        range = self._getRiskRange()
+
+        sql = f"SELECT lastname, firstname from referees r where r.id in (SELECT mentee from risky where date between '{range[0]}' and '{range[1]}')"
+        r = self.cursor.execute(sql)
+        return r.fetchall()
+
+
     def refExists(self, lastname: str, firstname:str) -> bool:
         sql = "SELECT id from referees where lastname = %s and firstname = %s"
         r = self.cursor.execute(sql, (lastname.lower(), firstname.lower()))
