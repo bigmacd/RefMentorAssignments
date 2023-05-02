@@ -344,7 +344,7 @@ with tab2:
     def runReport(reportType, reportFormat):
         st.session_state.showButton = True
         if reportType == 'by year':
-            return db.produceReport(st.session_state.reportYearSelection, reportFormat)
+            return db.produceYearReport(st.session_state.reportYearSelection, reportFormat)
         elif reportType == 'by week':
             return db.produceWeekReport(st.session_state.reportWeekSelection, reportFormat)
         else:

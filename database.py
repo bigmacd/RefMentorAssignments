@@ -321,7 +321,7 @@ class RefereeDbCockroach(object):
         return retVal
 
 
-    def produceReport(self, year, reportType):
+    def produceYearReport(self, year, reportType):
         sessions = self.getMentoringSessionDetails(year)
         return self._getTextFromSessions(sessions)
 
