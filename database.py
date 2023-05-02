@@ -108,6 +108,14 @@ class RefereeDbCockroach(object):
         return r.fetchall()
 
 
+    def getRefereesForSelectionBox(self) -> list:
+        refs = self.getReferees()
+        retVal = []
+        for ref in refs:
+            retVal.append(f'{ref[0].capitalize()} {ref[1].capitalize()}')
+        return retVal
+
+
     def getNewReferees(self, year) -> list:
         sql = "SELECT firstname, lastname from referees where year_certified = %s"
         r = self.cursor.execute(sql, (year,))
@@ -152,6 +160,30 @@ class RefereeDbCockroach(object):
               from mentor_sessions ms \
               join referees r on ms.mentee = r.id join mentors me on ms.mentor = me.id \
               where ms.date between '{range[0]}' and '{range[1]}' ORDER BY ms.date"
+        r = self.cursor.execute(sql)
+        return r.fetchall()
+
+
+    def getMentoringsessionsForWeek(self, week: str) -> dict:
+        # week string is like "Friday, April 14, 2023"
+        d = datetime.strptime(week, "%A, %B %d, %Y")
+        dt = d.strftime("%Y-%m-%d")
+        sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name \
+              from mentor_sessions ms \
+              join referees r on ms.mentee = r.id join mentors me on ms.mentor = me.id \
+              where ms.date = '{dt}'"
+        r = self.cursor.execute(sql)
+        return r.fetchall()
+
+
+    def getMentoringsessionsForReferee(self, referee: str) -> dict:
+        # referee string is like "Kate Curby"
+        firstname, lastname = referee.split(' ')
+        sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name \
+              from mentor_sessions ms \
+              join referees r on ms.mentee = r.id join mentors me on ms.mentor = me.id \
+              where r.firstname = '{firstname.lower()}' and r.lastname = '{lastname.lower()}' \
+              order by ms.date"
         r = self.cursor.execute(sql)
         return r.fetchall()
 
@@ -258,12 +290,8 @@ class RefereeDbCockroach(object):
             self.setIsRisky(menteeId[0], newId, dt)
             return (True, "Mentor Report successfully submitted!")
 
-
-
-    def produceReport(self, year):
-
+    def _getTextFromSessions(self, sessions):
         retVal = ''
-        sessions = self.getMentoringSessionDetails(year)
         # [0] is firstname, [1] is lastname, [2] is position
         # [3] is date and [4] is comments
         sessionData = {}
@@ -292,3 +320,17 @@ class RefereeDbCockroach(object):
 
         return retVal
 
+
+    def produceReport(self, year, reportType):
+        sessions = self.getMentoringSessionDetails(year)
+        return self._getTextFromSessions(sessions)
+
+
+    def produceWeekReport(self, week, reportType):
+        sessions = self.getMentoringsessionsForWeek(week)
+        return self._getTextFromSessions(sessions)
+
+
+    def produceRefereeReport(self, referee, reportType):
+        sessions = self.getMentoringsessionsForReferee(referee)
+        return self._getTextFromSessions(sessions)

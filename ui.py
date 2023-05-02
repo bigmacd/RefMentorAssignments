@@ -12,7 +12,6 @@ allMatchData = getAllData()
 dates = list(allMatchData.keys())
 
 db = RefereeDbCockroach()
-reportData = ''
 
 if 'mentor' not in st.session_state:
     st.session_state.mentor = 'mentor'
@@ -40,311 +39,361 @@ if 'revisitAR2' not in st.session_state:
     st.session_state.revisitAR2 = False
 if 'reportIndex' not in st.session_state:
     st.session_state.reportIndex = 0
-if 'downloadButtonEnabled' not in st.session_state:
-    st.session_state.downloadButtonEnabled = True
+if 'downloadButtonDisabled' not in st.session_state:
+    st.session_state.downloadButtonDisabled = True
 if 'centerMessageBox' not in st.session_state:
     st.session_state.centerMessageBox = None
 if 'ar1MessageBox' not in st.session_state:
     st.session_state.ar1MessageBox = None
 if 'ar2MessageBox' not in st.session_state:
     st.session_state.ar2MessageBox = None
+if 'showButton' not in st.session_state:
+    st.session_state.showButton = False
 # if 'dateKey' not in st.session_state:
 #     st.session_state.dateKey = 'dates'
 
 
-selectionBoxData = [' ']
-yearData = db.getYears()
-for year in yearData:
-    selectionBoxData.append(year)
-if 'yearKey' not in st.session_state:
-    st.session_state.yearKey = selectionBoxData
+
+tab1, tab2 = st.tabs(['Main', 'Reports'])
+
+with tab1:
+    selectionBoxData = [' ']
+    yearData = db.getYears()
+    for year in yearData:
+        selectionBoxData.append(year)
+    if 'yearKey' not in st.session_state:
+        st.session_state.yearKey = selectionBoxData
 
 
-def parseRefName(name: str) -> Tuple[str, str]:
-    '''
-    This handles all the idiosyncrasies of peoples names as configured
-    in MSL.
-    '''
-    #st.write(f'refname: {name}')
-    parts = name.split(',') # see "Michael Aguilera, Sr."
-    #st.write(f'parts: {str(parts)}')
-    if len(parts) > 1:
-        return parts[0].split(' ')
-    parts = name.split(' ')
-    if len(parts) > 2:  # see 'Will Covey III'
-        return (parts[0], parts[1])
-    return parts
+    def parseRefName(name: str) -> Tuple[str, str]:
+        '''
+        This handles all the idiosyncrasies of peoples names as configured
+        in MSL.
+        '''
+        #st.write(f'refname: {name}')
+        if name == '(requested)':
+            return [None, None]
+        parts = name.split(',') # see "Michael Aguilera, Sr."
+        #st.write(f'parts: {str(parts)}')
+        if len(parts) > 1:
+            return parts[0].split(' ')
+        parts = name.split(' ')
+        if len(parts) > 2:  # see 'Will Covey III'
+            return (parts[0], parts[1])
+        return parts
 
 
-def getCurrentDateIndex(dates: list) -> int:
-    today = dtime.now()
-    for index, d in enumerate(dates):
-        thisDate = dtime.strptime(d, "%A, %B %d, %Y")
-        if thisDate > today:
-            return index
+    def getCurrentDateIndex(dates: list) -> int:
+        today = dtime.now()
+        for index, d in enumerate(dates):
+            thisDate = dtime.strptime(d, "%A, %B %d, %Y")
+            if thisDate > today:
+                return index
 
 
-#----------------------------------------------------
-# Specify the Mentor - mentors are pre-configured in the database
-mentors = db.getMentors()
+    #----------------------------------------------------
+    # Specify the Mentor - mentors are pre-configured in the database
+    mentors = db.getMentors()
 
-values = []
-for mentor in mentors:
-    entry = f'{mentor[0].capitalize()} {mentor[1].capitalize()}'
-    values.append(entry)
+    values = []
+    for mentor in mentors:
+        entry = f'{mentor[0].capitalize()} {mentor[1].capitalize()}'
+        values.append(entry)
 
-st.selectbox("Please select a mentor", values, key='mentorKey')
-#----------------------------------------------------
-
-
-#----------------------------------------------------
-# Specify the date - list of dates comes from MSL
-dateIndex = getCurrentDateIndex(dates)
-st.selectbox("Please select the date of the match:", dates, index=dateIndex, key='dateKey')
-dateInfo = st.session_state['dateKey']
-#----------------------------------------------------
+    st.selectbox("Please select a mentor", values, key='mentorKey')
+    #----------------------------------------------------
 
 
-#----------------------------------------------------
-# Specify the venue - venues come from MSL for the date selected
-#matches = site.getMatches(st.session_state['dateKey'])
-matches = allMatchData[st.session_state['dateKey']]
-venues = list(matches.keys())
-st.selectbox("Select the venue:", venues, key='venue')
-#----------------------------------------------------
+    #----------------------------------------------------
+    # Specify the date - list of dates comes from MSL
+    dateIndex = getCurrentDateIndex(dates)
+    st.selectbox("Please select the date of the match:", dates, index=dateIndex, key='dateKey')
+    dateInfo = st.session_state['dateKey']
+    #----------------------------------------------------
 
 
-#----------------------------------------------------
-# Specify which match - matches come from MSL for the date
-# and venue selected
-venueInfo = st.session_state['venue']
-games = matches[venueInfo]
-
-selectionList = []
-for game in games:
-    selectionList.append(f"Time-{game['Time']}")
-st.selectbox("Which game?:", selectionList, key='game')
-
-game = st.session_state['game']
-gametime = game.split('-')[1]
-currentMatch = None
-
-for game in games:
-    if game['Time'] == gametime:
-        currentMatch = game
-#----------------------------------------------------
+    #----------------------------------------------------
+    # Specify the venue - venues come from MSL for the date selected
+    #matches = site.getMatches(st.session_state['dateKey'])
+    matches = allMatchData[st.session_state['dateKey']]
+    venues = list(matches.keys())
+    st.selectbox("Select the venue:", venues, key='venue')
+    #----------------------------------------------------
 
 
-#----------------------------------------------------
-# which referees are we mentoring?
-centerCB = None
-AR1CB = None
-AR2CB = None
+    #----------------------------------------------------
+    # Specify which match - matches come from MSL for the date
+    # and venue selected
+    venueInfo = st.session_state['venue']
+    games = matches[venueInfo]
 
-with st.container():
-    st.write("Please select the new referees that were the focus of the mentoring:")
-    col1, col2, col3 = st.columns(3)
-    #disabled = False
-    with col1:
-        #disabled = True
-        refname = currentMatch['Center']
-        if refname != 'Not Used' and refname != 'None':
-            fname, lname = parseRefName(refname)
-        #    if db.findReferee(lname, fname):
-        #        disabled = False
-        centerCB = st.checkbox(f"Center: {currentMatch['Center']}", key='centercb')
-    with col2:
-        #disabled = True
-        refname = currentMatch['AR1']
-        if refname != 'Not Used' and refname != 'None':
-            fname, lname = parseRefName(refname)
-        #    if db.findReferee(lname, fname):
-        #        disabled = False
-        AR1CB = st.checkbox(f"AR1: {currentMatch['AR1']}", key='ar1cb')
-    with col3:
-        #disabled = True
-        refname = currentMatch['AR2']
-        if refname != 'Not Used' and refname != 'None':
-            fname, lname = parseRefName(refname)
-        #    if db.findReferee(lname, fname):
-        #        disabled = False
-        AR2CB = st.checkbox(f"AR2: {currentMatch['AR2']}", key='ar2cb')
-#----------------------------------------------------
+    selectionList = []
+    for game in games:
+        selectionList.append(f"Time-{game['Time']}")
+    st.selectbox("Which game?:", selectionList, key='game')
+
+    game = st.session_state['game']
+    gametime = game.split('-')[1]
+    currentMatch = None
+
+    for game in games:
+        if game['Time'] == gametime:
+            currentMatch = game
+    #----------------------------------------------------
 
 
-#----------------------------------------------------
-# Enter the comments from the mentor
-st.text_area("Comments", height=400, key="comments")
-#----------------------------------------------------
+    #----------------------------------------------------
+    # which referees are we mentoring?
+    centerCB = None
+    AR1CB = None
+    AR2CB = None
+
+    with st.container():
+        st.write("Please select the new referees that were the focus of the mentoring:")
+        col1, col2, col3 = st.columns(3)
+        #disabled = False
+        with col1:
+            #disabled = True
+            refname = currentMatch['Center']
+            if refname != 'Not Used' and refname != 'None':
+                fname, lname = parseRefName(refname)
+            #    if db.findReferee(lname, fname):
+            #        disabled = False
+            centerCB = st.checkbox(f"Center: {currentMatch['Center']}", key='centercb')
+        with col2:
+            #disabled = True
+            refname = currentMatch['AR1']
+            if refname != 'Not Used' and refname != 'None':
+                fname, lname = parseRefName(refname)
+            #    if db.findReferee(lname, fname):
+            #        disabled = False
+            AR1CB = st.checkbox(f"AR1: {currentMatch['AR1']}", key='ar1cb')
+        with col3:
+            #disabled = True
+            refname = currentMatch['AR2']
+            if refname != 'Not Used' and refname != 'None':
+                fname, lname = parseRefName(refname)
+            #    if db.findReferee(lname, fname):
+            #        disabled = False
+            AR2CB = st.checkbox(f"AR2: {currentMatch['AR2']}", key='ar2cb')
+    #----------------------------------------------------
 
 
-def revisitCenterCB():
-    print("in revisitCenterCB")
-    if st.session_state.centerMessageBox is not None:
-        st.session_state.centerMessageBox.empty()
-    if centerCB is False:
-        st.session_state.centerMessageBox = st.error("To request a revisit for center, the Center should be selected as a mentee", icon="🚨")
-        st.session_state.revisitCenter = st.checkbox('Should Center be revisited?', on_change=revisitCenterCB, value = False)
-
-def revisitAR1CB():
-    pass
+    #----------------------------------------------------
+    # Enter the comments from the mentor
+    st.text_area("Comments", height=400, key="comments")
+    #----------------------------------------------------
 
 
-def revisitAR2CB():
-    pass
+    def revisitCenterCB():
+        if st.session_state.centerMessageBox is not None:
+            st.session_state.centerMessageBox.empty()
+        if centerCB is False:
+            st.session_state.centerMessageBox = st.error("To request a revisit for center, the Center should be selected as a mentee", icon="🚨")
+            st.session_state.revisitCenter = st.checkbox('Should Center be revisited?', on_change=revisitCenterCB, value = False)
+
+    def revisitAR1CB():
+        pass
 
 
-#----------------------------------------------------
-# Checkboxes to indicate if a referee should be revisted
-with st.container():
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        revisitCenter = st.checkbox('Should Center be revisited?', key='revisitCenter')
-    with col2:
-        revisitAR1 = st.checkbox('Should AR1 be revisited?', key='revisitAR1', on_change=revisitAR1CB)
-    with col3:
-        revisitAR2 = st.checkbox('Should AR2 be revisited?', key='revisitAR2', on_change=revisitAR2CB)
-#----------------------------------------------------
+    def revisitAR2CB():
+        pass
 
 
-#----------------------------------------------------
-def runReport() -> None:
-    global reportData
-    year = st.session_state.reportSelection
-    if year == ' ' or year is None:
-        return
-    reportData = db.produceReport(year)
-    st.session_state.downloadButtonEnabled = False
 
-    st.download_button("Download Data",
-                    data=reportData,
-                    disabled=st.session_state.downloadButtonEnabled,
-                    mime='text/plain')
+    #----------------------------------------------------
+    # Reset the form
+    def formReset() -> None:
+        # To Do - set the date to the most reset date?
+        # assuming this can be done
 
-#----------------------------------------------------
-
-
-#----------------------------------------------------
-# This handles the clicking of the Cancel button
-# reset the form
-def doCancel() -> None:
-    formReset()
-#----------------------------------------------------
+        st.session_state['comments'] = ''
+        st.session_state['centercb'] = False
+        st.session_state['ar1cb'] = False
+        st.session_state['ar2cb'] = False
+        st.session_state['revisitCenter'] = False
+        st.session_state['revisitAR1'] = False
+        st.session_state['revisitAR2'] = False
+        st.session_state.downloadButtonDisabled = True
+    #----------------------------------------------------
 
 
-#----------------------------------------------------
-# This handles the clicking of the Save button
-# Save the mentor's comments for each of the selected
-# referees
+    #----------------------------------------------------
+    # Checkboxes to indicate if a referee should be revisted
+    with st.container():
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            revisitCenter = st.checkbox('Should Center be revisited?', key='revisitCenter')
+        with col2:
+            revisitAR1 = st.checkbox('Should AR1 be revisited?', key='revisitAR1', on_change=revisitAR1CB)
+        with col3:
+            revisitAR2 = st.checkbox('Should AR2 be revisited?', key='revisitAR2', on_change=revisitAR2CB)
+    #----------------------------------------------------
 
-def doSave() -> None:
-
-    global messagebox
-
-    # get mentor
-    mentor = st.session_state['mentorKey'].lower()
-
-    # checkbox states - only report for refs that have been selected
-    refs = [centerCB, AR1CB, AR2CB]
-    position = ['Center', 'AR1', 'AR2']
-
-    # tracks refs and the position they had
-    refIds = []
-
-    for i, ref in enumerate(refs):
-        if ref is True:
-            ref = currentMatch[position[i]]
-            refIds.append((ref, position[i]))
-    for id in refIds:
-        # status, message = db.addMentorSession(mentor,
-        #                                       id[0].lower(), # referee
-        #                                       id[1], # position
-        #                                       st.session_state['dateKey'],
-        #                                       st.session_state['comments'])
-
-        revisit = (id[1] == "Center" and st.session_state.revisitCenter is True) or \
-           (id[1] == "AR1" and st.session_state.revisitAR1 is True) or \
-           (id[1] == "AR2" and st.session_state.revisitAR2 is True)
-        status, message = db.addMentorSessionNew(mentor,
-                                                 id[0].lower(), # referee
-                                                 id[1], # position
-                                                 st.session_state['dateKey'],
-                                                 st.session_state['comments'],
-                                                 revisit)
-
-        if status:
-
-            if len(refIds) == 1:
-                st.balloons()
-
-            # announce the good news
-            #box = st.success(message + f": Referee {id[0]}", icon="✅")
-            messagebox = st.success(message + f": Referee {id[0]}", icon="✅")
-
-            # set up the timer for clearing the message
-            time.sleep(5)
-            messagebox.empty()
-        else:
-            st.error(f'There was some kind of error: {message}', icon="🚨")
-
+    #----------------------------------------------------
+    # This handles the clicking of the Cancel button
     # reset the form
-    formReset()
-#----------------------------------------------------
+    def doCancel() -> None:
+        formReset()
+    #----------------------------------------------------
 
 
-#----------------------------------------------------
-# put the save and cancel buttons on the form
-col1, _, col3 = st.columns(3)
-with col1:
-    st.button("Save", on_click = doSave, key="save")
-# with col2:
-#     st.button(f"AR1: {currentMatch['AR1']}")
-with col3:
-    st.button("Cancel", on_click = doCancel, key = "cancel")
+    #----------------------------------------------------
+    # This handles the clicking of the Save button
+    # Save the mentor's comments for each of the selected
+    # referees
 
-#----------------------------------------------------
+    def doSave() -> None:
+
+        global messagebox
+
+        # get mentor
+        mentor = st.session_state['mentorKey'].lower()
+
+        # checkbox states - only report for refs that have been selected
+        refs = [centerCB, AR1CB, AR2CB]
+        position = ['Center', 'AR1', 'AR2']
+
+        # tracks refs and the position they had
+        refIds = []
+
+        for i, ref in enumerate(refs):
+            if ref is True:
+                ref = currentMatch[position[i]]
+                refIds.append((ref, position[i]))
+        for id in refIds:
+            # status, message = db.addMentorSession(mentor,
+            #                                       id[0].lower(), # referee
+            #                                       id[1], # position
+            #                                       st.session_state['dateKey'],
+            #                                       st.session_state['comments'])
+
+            revisit = (id[1] == "Center" and st.session_state.revisitCenter is True) or \
+            (id[1] == "AR1" and st.session_state.revisitAR1 is True) or \
+            (id[1] == "AR2" and st.session_state.revisitAR2 is True)
+            status, message = db.addMentorSessionNew(mentor,
+                                                    id[0].lower(), # referee
+                                                    id[1], # position
+                                                    st.session_state['dateKey'],
+                                                    st.session_state['comments'],
+                                                    revisit)
+
+            if status:
+
+                if len(refIds) == 1:
+                    st.balloons()
+
+                # announce the good news
+                #box = st.success(message + f": Referee {id[0]}", icon="✅")
+                messagebox = st.success(message + f": Referee {id[0]}", icon="✅")
+
+                # set up the timer for clearing the message
+                time.sleep(5)
+                messagebox.empty()
+            else:
+                st.error(f'There was some kind of error: {message}', icon="🚨")
+
+        # reset the form
+        formReset()
+    #----------------------------------------------------
 
 
+    #----------------------------------------------------
+    # put the save and cancel buttons on the form
+    col1, _, col3 = st.columns(3)
+    with col1:
+        st.button("Save", on_click = doSave, key="save")
+    # with col2:
+    #     st.button(f"AR1: {currentMatch['AR1']}")
+    with col3:
+        st.button("Cancel", on_click = doCancel, key = "cancel")
 
-#----------------------------------------------------
-# Put some space in and add a button to run a report
-# The report is a year-to-date
+    #----------------------------------------------------
 
-values = ['']
-# Get the available years:
-years = db.getYears()
-for year in years:
-    values.append(year)
 
-# just put some space so it's not obvious
-for _ in range(10):
-    st.write("")
+with tab2:
 
-with st.expander("Reporting") as e:
+    def downloadClick():
+        st.session_state.showButton = False
 
-    st.empty()
-    st.selectbox("Please select the year",
-                 options=st.session_state.yearKey,
-                 key='reportSelection',
-                 on_change=runReport) #,
-                 #index=st.session_state.reportIndex)
-    #st.session_state.reportIndex = st.session_state.yearKey.index(st.session_state.reportSelection)
-    st.empty()
+    #----------------------------------------------------
+    def runByYearReport() -> None:
+        year = st.session_state.reportYearSelection
+        if year == ' ' or year is None:
+            return
+        st.session_state.showButton = True
+    #----------------------------------------------------
 
-#----------------------------------------------------
+    #----------------------------------------------------
+    def runByWeekReport() -> None:
+        week = st.session_state.reportWeekSelection
+        if week == '' or week is None:
+            return
+        st.session_state.showButton = True
+    #----------------------------------------------------
 
-#----------------------------------------------------
-# Reset the form
-def formReset() -> None:
-    # To Do - set the date to the most reset date?
-    # assuming this can be done
+    #----------------------------------------------------
+    def runByRefereeReport() -> None:
+        referee = st.session_state.reportRefereeSelection
+        if referee == '' or referee is None:
+            return
+        st.session_state.showButton = True
+    #----------------------------------------------------
 
-    st.session_state['comments'] = ''
-    st.session_state['centercb'] = False
-    st.session_state['ar1cb'] = False
-    st.session_state['ar2cb'] = False
-    st.session_state['revisitCenter'] = False
-    st.session_state['revisitAR1'] = False
-    st.session_state['revisitAR2'] = False
-    st.session_state.downloadButtonEnabled = True
-#----------------------------------------------------
+    #----------------------------------------------------
+    def runReport(reportType, reportFormat):
+        st.session_state.showButton = True
+        if reportType == 'by year':
+            return db.produceReport(st.session_state.reportYearSelection, reportFormat)
+        elif reportType == 'by week':
+            return db.produceWeekReport(st.session_state.reportWeekSelection, reportFormat)
+        else:
+            return db.produceRefereeReport(st.session_state.reportRefereeSelection, reportFormat)
+    #----------------------------------------------------
+
+    #----------------------------------------------------
+    format = st.radio("Select the report format:",
+                      options = ['Text', 'Excel'],
+                      index = 0,
+                      disabled=True,
+                      key="reportFormat")
+
+    reportType = st.selectbox("Select the type of report",
+                              options = ["by year", "by week", "by referee"],
+                              key='reportType')
+
+    if reportType == 'by year':
+        st.empty()
+        st.selectbox("Please select the year",
+                    options=st.session_state.yearKey,
+                    key='reportYearSelection',
+                    on_change=runByYearReport)
+        st.empty()
+
+    if reportType == 'by week':
+        weeks = dates
+        weeks.insert(0, '')
+        st.empty()
+        st.selectbox("Please select the week",
+                     key='reportWeekSelection',
+                     options = weeks,
+                     on_change=runByWeekReport)
+        st.empty()
+
+
+    if reportType == 'by referee':
+        st.empty()
+        referees = db.getRefereesForSelectionBox()
+        referees.insert(0, '')
+        st.selectbox("Please select the referee",
+                     key='reportRefereeSelection',
+                     options = referees,
+                     on_change=runByRefereeReport)
+
+    empty = st.empty()
+    if st.session_state.showButton:
+        empty.download_button("Download Data",
+                               data=runReport(reportType, format),
+                               mime='text/plain' if st.session_state.reportFormat == 'Text' else 'application/vnd.ms-excel',
+                               on_click=downloadClick)
+    #----------------------------------------------------
