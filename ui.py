@@ -344,11 +344,20 @@ with tab2:
     def runReport(reportType, reportFormat):
         st.session_state.showButton = True
         if reportType == 'by year':
-            return db.produceYearReport(st.session_state.reportYearSelection, reportFormat)
+            if st.session_state.reportYearSelection == ' ' or st.session_state.reportYearSelection is None:
+                st.session_state.showButton = False
+            else:
+                return db.produceYearReport(st.session_state.reportYearSelection, reportFormat)
         elif reportType == 'by week':
-            return db.produceWeekReport(st.session_state.reportWeekSelection, reportFormat)
+            if st.session_state.reportWeekSelection == '' or st.session_state.reportWeekSelection is None:
+                st.session_state.showButton = False
+            else:
+                return db.produceWeekReport(st.session_state.reportWeekSelection, reportFormat)
         else:
-            return db.produceRefereeReport(st.session_state.reportRefereeSelection, reportFormat)
+            if st.session_state.reportRefereeSelection == '' or st.session_state.reportRefereeSelection is None:
+                st.session_state.showButton = False
+            else:
+                return db.produceRefereeReport(st.session_state.reportRefereeSelection, reportFormat)
     #----------------------------------------------------
 
     #----------------------------------------------------
