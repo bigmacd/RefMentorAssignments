@@ -4,6 +4,7 @@ import time
 from typing import Tuple
 
 from database import RefereeDbCockroach
+from excelWriter import getExcelFromText
 from uiData import getAllData
 
 
@@ -343,28 +344,37 @@ with tab2:
     #----------------------------------------------------
     def runReport(reportType, reportFormat):
         st.session_state.showButton = True
+        retVal = None
         if reportType == 'by year':
             if st.session_state.reportYearSelection == ' ' or st.session_state.reportYearSelection is None:
                 st.session_state.showButton = False
             else:
-                return db.produceYearReport(st.session_state.reportYearSelection, reportFormat)
+                retVal = db.produceYearReport(st.session_state.reportYearSelection, reportFormat)
         elif reportType == 'by week':
             if st.session_state.reportWeekSelection == '' or st.session_state.reportWeekSelection is None:
                 st.session_state.showButton = False
             else:
-                return db.produceWeekReport(st.session_state.reportWeekSelection, reportFormat)
+                retVal = db.produceWeekReport(st.session_state.reportWeekSelection, reportFormat)
         else:
             if st.session_state.reportRefereeSelection == '' or st.session_state.reportRefereeSelection is None:
                 st.session_state.showButton = False
             else:
-                return db.produceRefereeReport(st.session_state.reportRefereeSelection, reportFormat)
+                retVal = db.produceRefereeReport(st.session_state.reportRefereeSelection, reportFormat)
+
+        if reportFormat == 'Text':
+            return retVal
+        else:
+            getExcelFromText(retVal)
+            with open('report.xlsx', 'rb') as fp:
+                retVal = fp.read()
+            return retVal
     #----------------------------------------------------
 
     #----------------------------------------------------
     format = st.radio("Select the report format:",
                       options = ['Text', 'Excel'],
                       index = 0,
-                      disabled=True,
+                      disabled=False,
                       key="reportFormat")
 
     reportType = st.selectbox("Select the type of report",
@@ -403,6 +413,6 @@ with tab2:
     if st.session_state.showButton:
         empty.download_button("Download Data",
                                data=runReport(reportType, format),
-                               mime='text/plain' if st.session_state.reportFormat == 'Text' else 'application/vnd.ms-excel',
+                               mime='text/plain' if st.session_state.reportFormat == 'Text' else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                on_click=downloadClick)
     #----------------------------------------------------
