@@ -438,18 +438,24 @@ with tab2:
 
 with tab3:
 
+    skipKeys = ['mslUsername', 'mslPassword', 'db_url']
     # write the file needed by google auth from Streamlit secrets
     with open(credFile, 'w') as fp:
         fp.write('{\n')
         for k, v in st.secrets.items():
+
+            if k in skipKeys:
+                continue
+
             if k == 'private_key':
                 v = v.encode('unicode_escape').decode('utf-8')
+
             fp.write(f'\t"{k}": "{v}"')
+
             if k != 'client_x509_cert_url':
                 fp.write(',\n')
             else:
                 fp.write('\n')
-            # fp.write(f'\t"{k}": "{v}",\n')
         fp.write('}')
 
     output = st.empty()
