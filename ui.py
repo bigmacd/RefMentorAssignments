@@ -1,12 +1,31 @@
+from contextlib import contextmanager, redirect_stdout
 from datetime import datetime as dtime
+from io import StringIO
 import streamlit as st
 import time
 from typing import Tuple
 
 from database import RefereeDbCockroach
 from excelWriter import getExcelFromText
+from googleSheets import credFile
+from main import run
 from uiData import getAllData
 
+
+@contextmanager
+def stCapture(outputFunc):
+    with StringIO() as stdout, redirect_stdout(stdout):
+        oldWrite = stdout.write
+
+        def newWrite(string):
+            ret = oldWrite(string)
+            outputFunc(stdout.getvalue())
+            return ret
+
+        stdout.write = newWrite
+        yield
+
+st.set_page_config(layout='wide')
 
 # get all the data we can, avoids a bunch of calls to the website
 allMatchData = getAllData()
@@ -55,7 +74,7 @@ if 'showButton' not in st.session_state:
 
 
 
-tab1, tab2 = st.tabs(['Main', 'Reports'])
+tab1, tab2, tab3 = st.tabs(['Main', 'Reports', 'Workload'])
 
 with tab1:
     selectionBoxData = [' ']
@@ -416,3 +435,23 @@ with tab2:
                                mime='text/plain' if st.session_state.reportFormat == 'Text' else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                on_click=downloadClick)
     #----------------------------------------------------
+
+with tab3:
+
+    # write the file needed by google auth from Streamlit secrets
+    with open(credFile, 'w') as fp:
+        fp.write('{\n')
+        for k, v in st.secrets.items():
+            if k == 'private_key':
+                v = v.encode('unicode_escape').decode('utf-8')
+            fp.write(f'\t"{k}": "{v}"')
+            if k != 'client_x509_cert_url':
+                fp.write(',\n')
+            else:
+                fp.write('\n')
+            # fp.write(f'\t"{k}": "{v}",\n')
+        fp.write('}')
+
+    output = st.empty()
+    with stCapture(output.code):
+        run()
