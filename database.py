@@ -116,6 +116,14 @@ class RefereeDbCockroach(object):
         return retVal
 
 
+    def getMentorsForSelectionBox(self) -> list:
+        mentors = self.getMentors()
+        retVal = []
+        for mentor in mentors:
+            retVal.append(f'{mentor[0].capitalize()} {mentor[1].capitalize()}')
+        return retVal
+
+
     def getNewReferees(self, year) -> list:
         sql = "SELECT firstname, lastname from referees where year_certified = %s"
         r = self.cursor.execute(sql, (year,))
@@ -187,6 +195,17 @@ class RefereeDbCockroach(object):
         r = self.cursor.execute(sql)
         return r.fetchall()
 
+
+    def getMentoringsessionsForMentor(self, mentor: str) -> dict:
+        # mentor string is like "David Helfgott"
+        firstname, lastname = mentor.split(' ')
+        sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name \
+              from mentor_sessions ms \
+              join referees r on ms.mentee = r.id join mentors me on ms.mentor = me.id \
+              where me.mentor_first_name = '{firstname.lower()}' and me.mentor_last_name = '{lastname.lower()}' \
+              order by ms.date"
+        r = self.cursor.execute(sql)
+        return r.fetchall()
 
     def getYears(self) -> list:
         retVal = []
@@ -333,4 +352,9 @@ class RefereeDbCockroach(object):
 
     def produceRefereeReport(self, referee, reportType):
         sessions = self.getMentoringsessionsForReferee(referee)
+        return self._getTextFromSessions(sessions)
+
+
+    def produceMentorReport(self, mentor, reportType):
+        sessions = self.getMentoringsessionsForMentor(mentor)
         return self._getTextFromSessions(sessions)

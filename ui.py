@@ -69,21 +69,24 @@ if 'ar2MessageBox' not in st.session_state:
     st.session_state.ar2MessageBox = None
 if 'showButton' not in st.session_state:
     st.session_state.showButton = False
+if 'reportRefereeSelection' not in st.session_state:
+    st.session_state.reportRefereeSelection = ''
+if 'reportYearSelection' not in st.session_state:
+    st.session_state.reportYearSelection = ''
+if 'reportWeekSelection' not in st.session_state:
+    st.session_state.reportWeekSelection = ''
+if 'reportMentorSelection' not in st.session_state:
+    st.session_state.reportMentorSelection = ''
 # if 'dateKey' not in st.session_state:
 #     st.session_state.dateKey = 'dates'
 
-
+yearData = db.getYears()
+yearData.insert(0, ' ')
 
 tab1, tab2, tab3 = st.tabs(['Main', 'Reports', 'Workload'])
 
 with tab1:
-    selectionBoxData = [' ']
-    yearData = db.getYears()
-    for year in yearData:
-        selectionBoxData.append(year)
-    if 'yearKey' not in st.session_state:
-        st.session_state.yearKey = selectionBoxData
-
+    selectionBoxData = yearData
 
     def parseRefName(name: str) -> Tuple[str, str]:
         '''
@@ -361,6 +364,14 @@ with tab2:
     #----------------------------------------------------
 
     #----------------------------------------------------
+    def runByMentorReport() -> None:
+        mentor = st.session_state.reportMentorSelection
+        if mentor == '' or mentor is None:
+            return
+        st.session_state.showButton = True
+    #----------------------------------------------------
+
+    #----------------------------------------------------
     def runReport(reportType, reportFormat):
         st.session_state.showButton = True
         retVal = None
@@ -374,11 +385,16 @@ with tab2:
                 st.session_state.showButton = False
             else:
                 retVal = db.produceWeekReport(st.session_state.reportWeekSelection, reportFormat)
-        else:
+        elif reportType == 'by referee':
             if st.session_state.reportRefereeSelection == '' or st.session_state.reportRefereeSelection is None:
                 st.session_state.showButton = False
             else:
                 retVal = db.produceRefereeReport(st.session_state.reportRefereeSelection, reportFormat)
+        elif reportType == 'by mentor':
+            if st.session_state.reportMentorSelection == '' or st.session_state.reportMentorSelection is None:
+                st.session_state.showButton = False
+            else:
+                retVal = db.produceMentorReport(st.session_state.reportMentorSelection, reportFormat)
 
         if reportFormat == 'Text':
             return retVal
@@ -397,13 +413,13 @@ with tab2:
                       key="reportFormat")
 
     reportType = st.selectbox("Select the type of report",
-                              options = ["by year", "by week", "by referee"],
+                              options = ["by year", "by week", "by referee", "by mentor"],
                               key='reportType')
 
     if reportType == 'by year':
         st.empty()
         st.selectbox("Please select the year",
-                    options=st.session_state.yearKey,
+                    options=yearData,
                     key='reportYearSelection',
                     on_change=runByYearReport)
         st.empty()
@@ -427,6 +443,17 @@ with tab2:
                      key='reportRefereeSelection',
                      options = referees,
                      on_change=runByRefereeReport)
+
+
+    if reportType == 'by mentor':
+        st.empty()
+        mentors = db.getMentorsForSelectionBox()
+        mentors.insert(0, '')
+        st.selectbox("Please select the mentor",
+                     key='reportMentorSelection',
+                     options = mentors,
+                     on_change=runByMentorReport)
+
 
     empty = st.empty()
     if st.session_state.showButton:
