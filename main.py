@@ -124,9 +124,9 @@ def run() -> None:
 
     allRefs = getAllRefereesFromSite(br)
 
-    for ref in newRefs:
-        if ref not in allRefs:
-            print (f'Referee: {ref} not in MSL, check name spelling')
+    # for ref in newRefs:
+    #     if ref not in allRefs:
+    #         print (f'Referee: {ref} not in MSL, check name spelling')
 
     # get this week's current assignments
     current = getRealTimeCurrentRefAssignments(br)
