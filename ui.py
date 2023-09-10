@@ -8,6 +8,10 @@ from typing import Tuple
 from database import RefereeDbCockroach
 from excelWriter import getExcelFromText
 from googleSheets import credFile
+
+import os
+print(st.write(os.getcwd()))
+
 from main import run
 from uiData import getAllData
 

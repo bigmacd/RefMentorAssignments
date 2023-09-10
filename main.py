@@ -6,12 +6,6 @@ from database import RefereeDbCockroach
 from refWebSites import MySoccerLeague
 from googleSheets import getRefsFromGoogleSignupSheet
 
-import os
-print(os.getcwd())
-print(os.getcwd())
-print(os.getcwd())
-print(os.getcwd())
-
 
 db = RefereeDbCockroach()
 
