@@ -1,8 +1,8 @@
 import os
 x = os.getcwd()
-print(st.write(x))
+print(f"cwd: {x}")
 for f in os.listdir(x):
-    st.write(f)
+    print(f)
 
 
 
