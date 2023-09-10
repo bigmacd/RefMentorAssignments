@@ -6,6 +6,10 @@ from database import RefereeDbCockroach
 from refWebSites import MySoccerLeague
 from googleSheets import getRefsFromGoogleSignupSheet
 
+
+import os
+print(os.getcwd())
+
 db = RefereeDbCockroach()
 
 def getRealTimeCurrentRefAssignments(br: mechanicalsoup.stateful_browser.StatefulBrowser) -> dict:
