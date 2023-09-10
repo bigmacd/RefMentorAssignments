@@ -6,6 +6,12 @@ from database import RefereeDbCockroach
 from refWebSites import MySoccerLeague
 from googleSheets import getRefsFromGoogleSignupSheet
 
+import os
+print(os.getcwd())
+print(os.getcwd())
+print(os.getcwd())
+print(os.getcwd())
+
 
 db = RefereeDbCockroach()
 
@@ -106,8 +112,7 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
 
 
 def run() -> None:
-    import os
-    print(os.getcwd())
+
     """
     Make sure database is up-to-date with VYS new referee spreadsheet
     """
