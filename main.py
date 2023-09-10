@@ -106,7 +106,8 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
 
 
 def run() -> None:
-
+    import os
+    print(os.getcwd())
     """
     Make sure database is up-to-date with VYS new referee spreadsheet
     """

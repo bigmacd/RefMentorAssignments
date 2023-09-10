@@ -11,11 +11,6 @@ from googleSheets import credFile
 from main import run
 from uiData import getAllData
 
-
-import os
-print(os.getcwd())
-
-
 @contextmanager
 def stCapture(outputFunc):
     with StringIO() as stdout, redirect_stdout(stdout):
