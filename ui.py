@@ -1,3 +1,11 @@
+import os
+x = os.getcwd()
+print(st.write(x))
+for f in os.listdir(x):
+    st.write(f)
+
+
+
 from contextlib import contextmanager, redirect_stdout
 from datetime import datetime as dtime
 from io import StringIO
@@ -8,9 +16,6 @@ from typing import Tuple
 from database import RefereeDbCockroach
 from excelWriter import getExcelFromText
 from googleSheets import credFile
-
-import os
-print(st.write(os.getcwd()))
 
 from main import run
 from uiData import getAllData
