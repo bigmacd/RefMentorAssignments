@@ -1,8 +1,10 @@
+
+import logging
 import os
 x = os.getcwd()
-print(f"cwd: {x}")
+logging.warning((f"cwd: {x}"))
 for f in os.listdir(x):
-    print(f)
+    logging.warning(f)
 
 
 
