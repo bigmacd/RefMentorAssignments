@@ -1,12 +1,10 @@
 
-import logging
-import os
-x = os.getcwd()
-logging.warning((f"cwd: {x}"))
-for f in os.listdir(x):
-    logging.warning(f)
-
-
+# import logging
+# import os
+# x = os.getcwd()
+# logging.warning((f"cwd: {x}"))
+# for f in os.listdir(x):
+#     logging.warning(f)
 
 from contextlib import contextmanager, redirect_stdout
 from datetime import datetime as dtime
@@ -81,8 +79,8 @@ if 'showButton' not in st.session_state:
     st.session_state.showButton = False
 if 'reportRefereeSelection' not in st.session_state:
     st.session_state.reportRefereeSelection = ''
-if 'reportYearSelection' not in st.session_state:
-    st.session_state.reportYearSelection = ''
+# if 'reportYearSelection' not in st.session_state:
+#     st.session_state.reportYearSelection = None
 if 'reportWeekSelection' not in st.session_state:
     st.session_state.reportWeekSelection = ''
 if 'reportMentorSelection' not in st.session_state:
