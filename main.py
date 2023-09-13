@@ -107,27 +107,44 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
 
 def run() -> None:
 
+
+    """
+    Update database with MSL referee list
+    """
+    br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
+    br.addheaders = [('User-agent', 'Chrome')]
+
+    allRefs = getAllRefereesFromSite(br)
+    # return list of tuples (firstname, lastname)
+
+    for ref in allRefs:
+        if not db.refExists(ref[1], ref[0]):
+            db.addReferee(ref[1], ref[0], 2000)
+
+
     """
     Make sure database is up-to-date with VYS new referee spreadsheet
     """
     latestRefs = getRefsFromGoogleSignupSheet()
+    # returns list of tuples (lastname, firstname, year_certified)
+
     for ref in latestRefs:
         if not db.refExists(ref[0], ref[1]):
+            print(f"ref0: {ref[0]}, ref1: {ref[1]}")
             db.addReferee(ref[0], ref[1], ref[2])
+
 
     """
     Verify new referees have the same first and last name in MSL.
     """
     newRefs = db.getNewReferees(2023)
+    # returns list of tuples (firstname, lastname)
 
-    br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
-    br.addheaders = [('User-agent', 'Chrome')]
+    for ref in newRefs:
+         if ref not in allRefs:
+             print (f'Referee: {ref[0]} {ref[1]} not in MSL, check name spelling')
 
-    allRefs = getAllRefereesFromSite(br)
 
-    # for ref in newRefs:
-    #     if ref not in allRefs:
-    #         print (f'Referee: {ref} not in MSL, check name spelling')
 
     # get this week's current assignments
     current = getRealTimeCurrentRefAssignments(br)
