@@ -10,6 +10,7 @@ from contextlib import contextmanager, redirect_stdout
 from datetime import datetime as dtime
 from io import StringIO
 import streamlit as st
+from streamlit_pills import pills
 import time
 from typing import Tuple
 
@@ -91,9 +92,12 @@ if 'reportMentorSelection' not in st.session_state:
 yearData = db.getYears()
 yearData.insert(0, ' ')
 
-tab1, tab2, tab3 = st.tabs(['Main', 'Reports', 'Workload'])
+#tab1, tab2, tab3 = st.tabs(['Main', 'Reports', 'Workload'])
+tab = pills("Please select an activity", ["Enter a Mentor Report", "Generate Reports", "See Current Workload"], ["🍀", "🎈", "🌈"])
 
-with tab1:
+#with tab1:
+if tab == "Enter a Mentor Report":
+
     selectionBoxData = yearData
 
     def parseRefName(name: str) -> Tuple[str, str]:
@@ -342,7 +346,8 @@ with tab1:
     #----------------------------------------------------
 
 
-with tab2:
+#with tab2:
+elif tab == 'Generate Reports':
 
     def downloadClick():
         st.session_state.showButton = False
@@ -471,7 +476,8 @@ with tab2:
                                on_click=downloadClick)
     #----------------------------------------------------
 
-with tab3:
+#with tab3:
+elif tab == 'See Current Workload':
 
     skipKeys = ['mslUsername', 'mslPassword', 'db_url']
     # write the file needed by google auth from Streamlit secrets
