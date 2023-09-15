@@ -103,9 +103,12 @@ class RefereeDbCockroach(object):
 
 
     def getReferees(self) -> list:
-        sql = "SELECT firstname, lastname from referees"
+        # retrieve only the referees that have reports
+        # return the list in sorted by last name order
+        sql = "select distinct lastname, firstname from referees r join mentor_sessions ms on ms.mentee = r.id"
+        #sql = "SELECT firstname, lastname from referees"
         r = self.cursor.execute(sql)
-        return r.fetchall()
+        return sorted(r.fetchall())
 
 
     def getRefereesForSelectionBox(self) -> list:
