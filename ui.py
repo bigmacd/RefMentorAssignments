@@ -152,6 +152,7 @@ if tab == "Enter a Mentor Report":
     #matches = site.getMatches(st.session_state['dateKey'])
     matches = allMatchData[st.session_state['dateKey']]
     venues = list(matches.keys())
+    venues = sorted(venues)
     st.selectbox("Select the venue:", venues, key='venue')
     #----------------------------------------------------
 
