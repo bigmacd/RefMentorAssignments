@@ -109,20 +109,6 @@ def run() -> None:
 
 
     """
-    Update database with MSL referee list
-    """
-    br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
-    br.addheaders = [('User-agent', 'Chrome')]
-
-    allRefs = getAllRefereesFromSite(br)
-    # return list of tuples (firstname, lastname)
-
-    for ref in allRefs:
-        if not db.refExists(ref[1], ref[0]):
-            db.addReferee(ref[1], ref[0], 2000)
-
-
-    """
     Make sure database is up-to-date with VYS new referee spreadsheet
     """
     latestRefs = getRefsFromGoogleSignupSheet()
@@ -132,6 +118,25 @@ def run() -> None:
         if not db.refExists(ref[0], ref[1]):
             print(f"ref0: {ref[0]}, ref1: {ref[1]}")
             db.addReferee(ref[0], ref[1], ref[2])
+
+
+    """
+    Retrieve referees from MSL
+    """
+    br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
+    br.addheaders = [('User-agent', 'Chrome')]
+
+    allRefs = getAllRefereesFromSite(br)
+    # return list of tuples (firstname, lastname)
+
+
+    # This was a one-time thing?
+    # """
+    # Update database with MSL referee list
+    # """
+    # for ref in allRefs:
+    #     if not db.refExists(ref[1], ref[0]):
+    #         db.addReferee(ref[1], ref[0], 2000)
 
 
     """
