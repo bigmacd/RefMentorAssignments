@@ -122,7 +122,7 @@ if tab == "Enter a Mentor Report":
         today = dtime.now()
         for index, d in enumerate(dates):
             thisDate = dtime.strptime(d, "%A, %B %d, %Y")
-            if thisDate > today:
+            if thisDate >= today:
                 return index
 
 
