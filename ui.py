@@ -97,7 +97,7 @@ tab = pills("Please select an activity", ["Enter a Mentor Report", "Generate Rep
 
 #with tab1:
 if tab == "Enter a Mentor Report":
-    st.write(dtime.now())
+
     selectionBoxData = yearData
 
     def parseRefName(name: str) -> Tuple[str, str]:
@@ -119,9 +119,13 @@ if tab == "Enter a Mentor Report":
 
 
     def getCurrentDateIndex(dates: list) -> int:
+        fs = "%A, %B %d, %Y"
+        # get the current date in the same format as in MSL
         today = dtime.now()
+        fd = today.strftime(fs)
+        today = dtime.strptime(fd, fs)
         for index, d in enumerate(dates):
-            thisDate = dtime.strptime(d, "%A, %B %d, %Y")
+            thisDate = dtime.strptime(d, fs)
             if thisDate >= today:
                 return index
 
