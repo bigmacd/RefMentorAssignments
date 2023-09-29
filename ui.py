@@ -97,7 +97,7 @@ tab = pills("Please select an activity", ["Enter a Mentor Report", "Generate Rep
 
 #with tab1:
 if tab == "Enter a Mentor Report":
-
+    st.write(dtime.now())
     selectionBoxData = yearData
 
     def parseRefName(name: str) -> Tuple[str, str]:
