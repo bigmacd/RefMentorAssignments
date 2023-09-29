@@ -134,7 +134,7 @@ if tab == "Enter a Mentor Report":
     for mentor in mentors:
         entry = f'{mentor[0].capitalize()} {mentor[1].capitalize()}'
         values.append(entry)
-
+    values = sorted(values)
     st.selectbox("Please select a mentor", values, key='mentorKey')
     #----------------------------------------------------
 
