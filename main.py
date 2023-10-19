@@ -69,9 +69,18 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
             if center not in newRefs and ar1 not in newRefs and ar2 not in newRefs:
                 continue
 
-            cmarker = '**' if center in mentored else ''
-            a1marker = '**' if ar1 in mentored else ''
-            a2marker = '**' if ar2 in mentored else ''
+            cmarker = ''
+            if center in mentored and 'Center' in mentored[center]:
+                cmarker = '**'
+            a1marker = ''
+            if ar1 in mentored and ('AR1' in mentored[ar1] or 'AR2' in mentored[ar1]):
+                a1marker = '**'
+            a2marker = ''
+            if ar2 in mentored and ('AR2' in mentored[ar2] or 'AR1' in mentored[ar2]):
+                a2marker = '**'
+            # cmarker = '**' if center in mentored else ''
+            # a1marker = '**' if ar1 in mentored else ''
+            # a2marker = '**' if ar2 in mentored else ''
 
             crisky = '##' if center in risky else ''
             a1risky = '##' if ar1 in risky else ''
@@ -114,10 +123,10 @@ def run() -> None:
     latestRefs = getRefsFromGoogleSignupSheet()
     # returns list of tuples (lastname, firstname, year_certified)
 
-    for ref in latestRefs:
-        if not db.refExists(ref[0], ref[1]):
-            print(f"ref0: {ref[0]}, ref1: {ref[1]}")
-            db.addReferee(ref[0], ref[1], ref[2])
+    # for ref in latestRefs:
+    #     if not db.refExists(ref[0], ref[1]):
+    #         print(f"{ref[1].capitalize()} {ref[0].capitalize()} not in database, adding")
+    #         db.addReferee(ref[0], ref[1], ref[2])
 
 
     """

@@ -154,16 +154,32 @@ class RefereeDbCockroach(object):
         return r.fetchall()
 
 
+    # def getMentoringSessions(self) -> dict:
+
+    #     range = self._getSeasonRange()
+
+    #     retVal = {}
+    #     sql = f"select distinct r.lastname, r.firstname, ms.position, ms.date from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
+    #     r = self.cursor.execute(sql)
+    #     rows = r.fetchall()
+    #     for row in rows:
+    #         retVal[f'{row[1]} {row[0]}'] = [ row[2], row[3]]
+    #     return retVal
+
+
     def getMentoringSessions(self) -> dict:
 
         range = self._getSeasonRange()
 
         retVal = {}
-        sql = f"select distinct r.lastname, r.firstname, ms.position, ms.date from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
+        sql = f"select r.lastname, r.firstname, ms.position from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
         r = self.cursor.execute(sql)
         rows = r.fetchall()
         for row in rows:
-            retVal[f'{row[1]} {row[0]}'] = [ row[2], row[3]]
+            key = f'{row[1]} {row[0]}'
+            if key not in retVal:
+                retVal[key] = []
+            retVal[key].append(row[2])
         return retVal
 
 
