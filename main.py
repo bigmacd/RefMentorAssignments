@@ -116,6 +116,8 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
 
 def run() -> None:
 
+    # adding this line to try to fix the deployment on streamlit.app
+    db = RefereeDbCockroach()
 
     """
     Make sure database is up-to-date with VYS new referee spreadsheet
@@ -123,10 +125,10 @@ def run() -> None:
     latestRefs = getRefsFromGoogleSignupSheet()
     # returns list of tuples (lastname, firstname, year_certified)
 
-    # for ref in latestRefs:
-    #     if not db.refExists(ref[0], ref[1]):
-    #         print(f"{ref[1].capitalize()} {ref[0].capitalize()} not in database, adding")
-    #         db.addReferee(ref[0], ref[1], ref[2])
+    for ref in latestRefs:
+        if not db.refExists(ref[0], ref[1]):
+            print(f"{ref[1].capitalize()} {ref[0].capitalize()} not in database, adding")
+            db.addReferee(ref[0], ref[1], ref[2])
 
 
     """
