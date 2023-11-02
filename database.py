@@ -60,6 +60,10 @@ class RefereeDbCockroach(object):
         return spring if today.month in (1, 2, 3, 4, 5, 6) else fall
 
 
+    def _removeRisky(self, mentee: int):
+        sql = f"DELETE FROM risky WHERE mentee = {mentee}'"
+        self.cursor.execute(sql)
+
 
     # finding stuff
 
@@ -301,6 +305,7 @@ class RefereeDbCockroach(object):
                             comments: str,
                             isRisky: bool) -> Tuple[bool, str]:
         if not isRisky:
+            self._removeRisky(mentee)
             return self.addMentorSession(mentor, mentee, position, date, comments)
 
 
