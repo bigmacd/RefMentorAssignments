@@ -27,6 +27,13 @@ def _isLastSixMonths(certDate: datetime.datetime, now: datetime.datetime) -> boo
     return earliestData <= certDate <= now
 
 
+def adjustPerUSSF(certDate: datetime.datetime) -> int:
+    year = certDate.year
+    if certDate.month >= 7:  # certifcations after July 1 are for the next year
+        year += 1
+    return year
+
+
 def _getThisYearsNewRefs(allRefs: list) -> list:
     now = datetime.datetime.now()
     retVal = []
@@ -34,9 +41,11 @@ def _getThisYearsNewRefs(allRefs: list) -> list:
     for ref in allRefs:
         certDate = datetime.datetime.strptime(ref[1], '%m/%d/%Y')
         if _isLastSixMonths(certDate, now):
+            year = adjustPerUSSF(certDate)
             l, f = ref[0].split(',')
-            retVal.append((l.strip(), f.strip(), certDate.year))
+            retVal.append((l.strip(), f.strip(), year))
     return retVal
+
 
 def getRefsFromGoogleSignupSheet() -> list:
 

@@ -130,7 +130,6 @@ def run() -> None:
             print(f"{ref[1].capitalize()} {ref[0].capitalize()} not in database, adding")
             db.addReferee(ref[0], ref[1], ref[2])
 
-
     """
     Retrieve referees from MSL
     """
@@ -140,7 +139,6 @@ def run() -> None:
     allRefs = getAllRefereesFromSite(br)
     # return list of tuples (firstname, lastname)
 
-
     # This was a one-time thing?
     # """
     # Update database with MSL referee list
@@ -149,18 +147,15 @@ def run() -> None:
     #     if not db.refExists(ref[1], ref[0]):
     #         db.addReferee(ref[1], ref[0], 2000)
 
-
     """
     Verify new referees have the same first and last name in MSL.
     """
-    newRefs = db.getNewReferees(2023)
+    newRefs = db.getNewReferees(2024)
     # returns list of tuples (firstname, lastname)
 
     for ref in newRefs:
          if ref not in allRefs:
              print (f'Referee: {ref[0]} {ref[1]} not in MSL, check name spelling')
-
-
 
     # get this week's current assignments
     current = getRealTimeCurrentRefAssignments(br)

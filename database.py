@@ -135,6 +135,8 @@ class RefereeDbCockroach(object):
 
 
     def getNewReferees(self, year) -> list:
+        today = datetime.today()
+        year = today.year
         sql = "SELECT firstname, lastname from referees where year_certified = %s"
         r = self.cursor.execute(sql, (year,))
         return r.fetchall()
@@ -176,7 +178,8 @@ class RefereeDbCockroach(object):
         range = self._getSeasonRange()
 
         retVal = {}
-        sql = f"select r.lastname, r.firstname, ms.position from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
+        # sql = f"select r.lastname, r.firstname, ms.position from mentor_sessions ms join referees r on ms.mentee = r.id where ms.date between '{range[0]}' and '{range[1]}'"
+        sql = f"select r.lastname, r.firstname, ms.position from mentor_sessions ms join referees r on ms.mentee = r.id"
         r = self.cursor.execute(sql)
         rows = r.fetchall()
         for row in rows:
