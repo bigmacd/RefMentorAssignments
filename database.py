@@ -60,9 +60,10 @@ class RefereeDbCockroach(object):
         return spring if today.month in (1, 2, 3, 4, 5, 6) else fall
 
 
-    def _removeRisky(self, mentee: int):
+    def _removeRisky(self, mentee: str):
         menteeId = self.findReferee(mentee.split(' ')[1], mentee.split(' ')[0])
-        sql = f"DELETE FROM risky WHERE mentee = {menteeId}"
+        menteeId = 1
+        sql = f"DELETE FROM risky WHERE mentee = '{menteeId}'"
         self.cursor.execute(sql)
 
 
