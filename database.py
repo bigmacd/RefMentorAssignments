@@ -61,7 +61,8 @@ class RefereeDbCockroach(object):
 
 
     def _removeRisky(self, mentee: int):
-        sql = f"DELETE FROM risky WHERE mentee = {mentee}'"
+        menteeId = self.findReferee(mentee.split(' ')[1], mentee.split(' ')[0])
+        sql = f"DELETE FROM risky WHERE mentee = {menteeId}"
         self.cursor.execute(sql)
 
 
