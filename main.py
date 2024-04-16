@@ -1,5 +1,7 @@
+import argparse
 import datetime
 import mechanicalsoup
+import os
 
 
 from database import RefereeDbCockroach
@@ -145,12 +147,12 @@ def run() -> None:
     # """
     # for ref in allRefs:
     #     if not db.refExists(ref[1], ref[0]):
-    #         db.addReferee(ref[1], ref[0], 2000)
+    #         print(f"missing ref: {ref[1]} {ref[0]}") #db.addReferee(ref[1], ref[0], 2000)
 
     """
     Verify new referees have the same first and last name in MSL.
     """
-    newRefs = db.getNewReferees(2024)
+    newRefs = db.getNewReferees()
     # returns list of tuples (firstname, lastname)
 
     for ref in newRefs:
@@ -173,6 +175,31 @@ def run() -> None:
     generateWorkload(current, newRefs, mentored, risky)
 
 
+def getEmails():
+    br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
+    br.addheaders = [('User-agent', 'Chrome')]
+    site = MySoccerLeague(br)
+    _ = site.getAllReferees()
+    return site.emails
+
+
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', action="store_true")
+    args = parser.parse_args()
+    if args.e is True:
+        emails = getEmails()
+        numEmails = len(emails)
+        half = numEmails/2
+        once = False
+        for x, email in enumerate(emails):
+            if email == os.environ.get('badmentor1') or email == os.environ.get('badmentor2')
+                continue
+            if x >= half and once is False:
+                for _ in range(0, 5):
+                    print("")
+                    once = True
+            print(email)
+    else:
+        run()

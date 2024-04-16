@@ -39,6 +39,7 @@ class MySoccerLeague(RefereeWebSite):
             else:
                 break
         self._getFutureDates(datetime.date.today())
+        self.emails = []
 
 
     def _login(self):
@@ -248,9 +249,12 @@ class MySoccerLeague(RefereeWebSite):
         return results
 
     def getAllReferees(self) -> list:
+        emails = None
+        retVal = None
         for _ in range(3):
             try:
                 url = 'https://www.mysoccerleague.com/AddRef.jsp?YSLkey={0}&actionName=Referees&showAll=true'.format(self._loginKey)
+                print(f"checking {url}")
                 page = self._browser.open(url)
 
                 entries1 = page.soup.find_all("tr", { "class" : 'trstyle1' })
@@ -259,9 +263,11 @@ class MySoccerLeague(RefereeWebSite):
                 entries = entries1 + entries2
 
                 retVal = []
+                emails = []
                 for entry in entries:
                     elements = entry.find_all('td')
                     refereeFullName = elements[4].text
+                    emails.append(elements[7].text)
                     try:
                         firstName, lastName = refereeFullName.split(' ')
                     except ValueError:
@@ -291,6 +297,12 @@ class MySoccerLeague(RefereeWebSite):
                         elif f == 'Gabi':
                             if x == 'Konde':
                                 last = x
+                        elif f == 'James':
+                            if x == 'Horn':
+                                last = f"{l} {x}"
+                        elif f == 'Joseph':
+                            if x == 'Sandoval':
+                                last = f"{l} {x}"
                         else:
                             print(f'Error parsing: {refereeFullName}: f: {f} l: {l}, x:{x}')
 
@@ -306,5 +318,6 @@ class MySoccerLeague(RefereeWebSite):
                 time.sleep(3)
             else:
                 break
+        self.emails = emails
         return retVal
 
