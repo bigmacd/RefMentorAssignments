@@ -12,21 +12,25 @@ class RefereeDbCockroach(object):
         self.cursor = self.connection.cursor()
         self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='referees'")
         if not self.cursor.fetchone()[0] == 1:
-            self.createDb(self.cursor)
+            self.createDb()
+        else:
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='gamedetails'")
+            if not self.cursor.fetchone()[0] == 1:
+                self._createNewGameDetailTable()
 
 
-    def createDb(self, cursor) -> bool:
+    def createDb(self) -> bool:
 
         sql = """CREATE TABLE referees (id SERIAL PRIMARY KEY,
                                         lastname TEXT NOT NULL,
                                         firstname TEXT NOT NULL,
                                         year_certified INTEGER)"""
-        cursor.execute(sql)
+        self.cursor.execute(sql)
 
         sql = """CREATE TABLE mentors (id SERIAL PRIMARY KEY,
                                         mentor_last_name TEXT NOT NULL,
                                         mentor_first_name TEXT NOT NULL)"""
-        cursor.execute(sql)
+        self.cursor.execute(sql)
 
         sql = """CREATE TABLE mentor_sessions (id SERIAL PRIMARY KEY,
                                                 mentor INTEGER NOT NULL,
@@ -34,13 +38,29 @@ class RefereeDbCockroach(object):
                                                 position TEXT NOT NULL,
                                                 date TIMESTAMP NOT NULL,
                                                 comments TEXT NOT NULL)"""
-        cursor.execute(sql)
+        self.cursor.execute(sql)
 
         sql = """CREATE TABLE risky (id SERIAL PRIMARY KEY,
                                      mentee INTEGER NOT NULL,
                                      mentor_session INTEGER NOT NULL,
                                      date TIMESTAMP NOT NULL DEFAULT NOW())"""
-        cursor.execute(sql)
+        self.cursor.execute(sql)
+
+        self._createNewGameDetailTable()
+
+
+    def _createNewGameDetailTable(self):
+            sql = """CREATE TABLE gamedetails ( id SERIAL PRIMARY KEY,
+                                                venue TEXT NOT NULL,
+                                                gameId TEXT NOT NULL,
+                                                center TEXT NOT NULL,
+                                                ar1 TEXT NOT NULL,
+                                                ar2 TEXT NOT NULL,
+                                                date text NOT NULL,
+                                                time TEXT NOT NULL,
+                                                age TEXT NOT NULL,
+                                                level TEXT NOT NULL)"""
+            self.cursor.execute(sql)
 
 
     def _getRiskRange(self) -> list:
@@ -392,3 +412,43 @@ class RefereeDbCockroach(object):
     def produceMentorReport(self, mentor, reportType):
         sessions = self.getMentoringsessionsForMentor(mentor)
         return self._getTextFromSessions(sessions)
+
+
+    # The below was added so we can also track the game details
+
+    def gameDetailsExist(self, gameId: str, date: str, time: str) -> bool:
+        sql = "SELECT * from gamedetails where gameId = %s and date = %s and time = %s"
+        try:
+            self.cursor.execute(sql, (gameId, date, time))
+        except Exception as ex:
+            print(ex)
+        return not self.cursor.fetchone() == None
+
+
+    def addGameDetails(self, currentGames: dict) -> None:
+
+        sql = """insert into gamedetails (venue,
+                                    gameId,
+                                    center,
+                                    ar1,
+                                    ar2,
+                                    date,
+                                    time,
+                                    age,
+                                    level)
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+
+        for venue, gameDetails in currentGames.items():
+            for gameid, game in gameDetails.items():
+                if 'VENUE CONFLICT' in gameid:
+                    gameid = gameid.replace('VENUE CONFLICT', '')
+                if self.gameDetailsExist(gameid, game['date'], game['gameTime']) is False:
+                    self.cursor.execute(sql, (venue,
+                                            gameid,
+                                            game['Center'],
+                                            game['AR1'],
+                                            game['AR2'],
+                                            game['date'],
+                                            game['gameTime'],
+                                            game['age'],
+                                            game['level']))
