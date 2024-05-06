@@ -161,6 +161,7 @@ def run() -> None:
 
     # get this week's current assignments
     current = getRealTimeCurrentRefAssignments(br)
+    db.addGameDetails(current)
 
     # get list of already mentored referees
     mentored = getRefsAlreadyMentored()

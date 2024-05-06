@@ -197,9 +197,9 @@ class MySoccerLeague(RefereeWebSite):
                 retVal[field] = []
 
             data = {
-                'Center': ref1,
-                'AR1': ref2,
-                'AR2': ref3,
+                'Center': ref1.replace('[VYS]', ''),
+                'AR1': ref2.replace('[VYS]', ''),
+                'AR2': ref3.replace('[VYS]', ''),
                 'Time': gameTime,
                 'Level' :level,
                 'Age': age,
