@@ -54,7 +54,10 @@ def getRiskyRefs() -> list:
     return retVal
 
 
-def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list) -> None:
+def generateWorkload(currentu: list,
+                     newRefs: list,
+                     mentored: list,
+                     risky: list) -> None:
 
     current = {}
     for c in sorted(currentu):
@@ -99,16 +102,16 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
             age = details[game]['age']
             level = details[game]['level']
 
-            print(f'\tID: {game}, Date: {date}, Time: {gameTime}, Age: {age}, Level: {level}')
+            print(f'    ID: {game}, Date: {date}, Time: {gameTime}, Age: {age}, Level: {level}')
 
             if center in newRefs:
-                print(f'\t\tNew Ref at Center: {center.title()}{cmarker} {crisky}')
+                print(f'        New Ref at Center: {center.title()}{cmarker} {crisky}')
 
             if ar1 in newRefs:
-                print(f'\t\tNew Ref at AR1: {ar1.title()}{a1marker} {a1risky}')
+                print(f'        New Ref at AR1: {ar1.title()}{a1marker} {a1risky}')
 
             if ar2 in newRefs:
-                print(f'\t\tNew Ref at AR2: {ar2.title()}{a2marker} {a2risky}')
+                print(f'        New Ref at AR2: {ar2.title()}{a2marker} {a2risky}')
 
     print("")
     print("** Referee has already had a mentor")
@@ -116,7 +119,71 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
     print("")
 
 
-def run() -> None:
+def generateNewWorkload(currentu: list,
+                        newRefs: list,
+                        mentored: list,
+                        risky: list) -> dict:
+    buffer = {}
+
+    current = {}
+    for c in sorted(currentu):
+        current[c] = currentu[c]
+
+    for field, details in current.items():
+        fieldsOnce = False
+        buffer[field] = {}
+        for game in details:
+
+            buffer[field][game] = []
+            center = details[game]['Center'].lower()
+            ar1 = details[game]['AR1'].lower()
+            ar2 = details[game]['AR2'].lower()
+
+            if center not in newRefs and ar1 not in newRefs and ar2 not in newRefs:
+                continue
+
+            cmarker = ''
+            if center in mentored and 'Center' in mentored[center]:
+                cmarker = '**'
+            a1marker = ''
+            if ar1 in mentored and ('AR1' in mentored[ar1] or 'AR2' in mentored[ar1]):
+                a1marker = '**'
+            a2marker = ''
+            if ar2 in mentored and ('AR2' in mentored[ar2] or 'AR1' in mentored[ar2]):
+                a2marker = '**'
+            # cmarker = '**' if center in mentored else ''
+            # a1marker = '**' if ar1 in mentored else ''
+            # a2marker = '**' if ar2 in mentored else ''
+
+            crisky = '##' if center in risky else ''
+            a1risky = '##' if ar1 in risky else ''
+            a2risky = '##' if ar2 in risky else ''
+
+            if not fieldsOnce:
+                buffer[field][game].append('')
+                buffer[field][game].append(f'Field: {field}')
+                fieldsOnce = True
+
+            date = details[game]['date']
+            gameTime = details[game]['gameTime']
+            age = details[game]['age']
+            level = details[game]['level']
+
+            buffer[field][game].append(f'    ID: {game}, Date: {date}, Time: {gameTime}, Age: {age}, Level: {level}')
+
+            if center in newRefs:
+                buffer[field][game].append(f'        New Ref at Center: {center.title()}{cmarker} {crisky}')
+
+            if ar1 in newRefs:
+                buffer[field][game].append(f'        New Ref at AR1: {ar1.title()}{a1marker} {a1risky}')
+
+            if ar2 in newRefs:
+                buffer[field][game].append(f'        New Ref at AR2: {ar2.title()}{a2marker} {a2risky}')
+
+    return buffer
+
+
+def run(newWorkload: bool = False) -> None:
 
     # adding this line to try to fix the deployment on streamlit.app
     db = RefereeDbCockroach()
@@ -173,7 +240,10 @@ def run() -> None:
     # (firstname, lastname) to list of strings "firstname lastname"
     newRefs = adjustDbNewRefs(newRefs)
 
-    generateWorkload(current, newRefs, mentored, risky)
+    if not newWorkload:
+        generateWorkload(current, newRefs, mentored, risky)
+    else:
+        return generateNewWorkload(current, newRefs, mentored, risky)
 
 
 def getEmails():
@@ -182,7 +252,6 @@ def getEmails():
     site = MySoccerLeague(br)
     _ = site.getAllReferees()
     return site.emails
-
 
 
 if __name__ == "__main__":
