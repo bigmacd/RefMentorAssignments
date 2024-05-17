@@ -36,15 +36,8 @@ def stCapture(outputFunc):
 
 st.set_page_config(layout='wide')
 
-@st.cache_data
 # get all the data we can, avoids a bunch of calls to the website
-def initializeData():
-    allMatchData = getAllData()
-    workload = run(True)
-    return allMatchData, workload
-
-allMatchData, workload = initializeData()
-
+allMatchData = getAllData()
 dates = list(allMatchData.keys())
 
 db = RefereeDbCockroach()
@@ -186,7 +179,6 @@ if tab == "Enter a Mentor Report":
     for game in games:
         if game['Time'] == gametime:
             currentMatch = game
-            break
     #----------------------------------------------------
 
 
@@ -491,6 +483,7 @@ elif tab == 'Generate Reports':
 
 #with tab3:
 elif tab == 'See Current Workload':
+
     skipKeys = ['mslUsername', 'mslPassword', 'db_url']
     # write the file needed by google auth from Streamlit secrets
     with open(credFile, 'w') as fp:
@@ -511,39 +504,6 @@ elif tab == 'See Current Workload':
                 fp.write('\n')
         fp.write('}')
 
-    # this generates the page
-    # output = st.empty()
-    # with stCapture(output.code):
-    #     data = run(True)
-    st.empty()
-    st.empty()
-    for key, data in workload.items():
-        with st.container():
-            with st.container():
-                st.subheader(key)
-                for k, v in data.items():
-                    col1, col2, col3 = st.columns([0.01, 0.74, 0.25], gap="small")
-                    for item in v:
-                        if item == '':
-                            continue
-                        if item.startswith("Field:"):
-                            continue
-                        with col1:
-                            st.empty()
-                        with col2:
-                            st.text(item)
-                        with col3:
-                            if item.strip().startswith("ID:"):
-                                st.button("claim", key=k)
-                            else:
-                                st.empty()
-
-
-
-
-    # data.keys()
-    #     dict_keys(['Jackson 1A - school side', 'Jackson 1B - Shed side', 'Ken Lawrence #2', 'Marshall Back Field Turf', 'Marshall HS 3 left', 'Marshall HS 3 right', 'Nottoway 4', 'Oakmont 2', 'Oakton HS 3 Full field', 'Oakton HS#3L', 'Oakton HS#3R (near road)', 'Oakton Stadium', 'Quantum Field'])
-    # data['Jackson 1A - school side']
-    #     {'773410': ['', 'Field: Jackson 1A - school side', '    ID: 773410, Date: 05/18/2024, Time: 2:15 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR1: Jaigan Lamba** ', '        New Ref at AR2: Alex Marshall '], '773411': ['    ID: 773411, Date: 05/18/2024, Time: 3:30 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR1: Jaigan Lamba** ', '        New Ref at AR2: Alex Marshall '], '773413': ['    ID: 773413, Date: 05/18/2024, Time: 4:45 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR2: Simon Crabb** '], '773414': ['    ID: 773414, Date: 05/18/2024, Time: 6:00 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR2: Simon Crabb** ']}
-    # data['Jackson 1A - school side']['773410']
-    #      ['', 'Field: Jackson 1A - school side', '    ID: 773410, Date: 05/18/2024, Time: 2:15 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR1: Jaigan Lamba** ', '        New Ref at AR2: Alex Marshall ']
+    output = st.empty()
+    with stCapture(output.code):
+        run()
