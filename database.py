@@ -18,6 +18,9 @@ class RefereeDbCockroach(object):
             if not self.cursor.fetchone()[0] == 1:
                 self._createNewGameDetailTable()
 
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='visitors'")
+            if not self.cursor.fetchone()[0] == 1:
+                self._createVisitorsTable()
 
     def createDb(self) -> bool:
 
@@ -47,6 +50,7 @@ class RefereeDbCockroach(object):
         self.cursor.execute(sql)
 
         self._createNewGameDetailTable()
+        self._createVisitorsTable()
 
 
     def _createNewGameDetailTable(self):
@@ -61,6 +65,19 @@ class RefereeDbCockroach(object):
                                                 age TEXT NOT NULL,
                                                 level TEXT NOT NULL)"""
             self.cursor.execute(sql)
+
+
+    def _createVisitorsTable(self):
+        sql = """CREATE TABLE visitors (id SERIAL PRIMARY KEY,
+                                        email TEXT NOT NULL,
+                                        date TIMESTAMP NOT NULL DEFAULT NOW())"""
+        self.cursor.execute(sql)
+
+
+    def addVisitor(self, email: str) -> None:
+        sql = "INSERT INTO visitors (email) values (%s)"
+        self.cursor.execute(sql, (email,))
+        self.connection.commit()
 
 
     def _getRiskRange(self) -> list:

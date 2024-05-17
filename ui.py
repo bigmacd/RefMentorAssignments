@@ -21,6 +21,7 @@ from googleSheets import credFile
 from main import run
 from uiData import getAllData
 
+
 @contextmanager
 def stCapture(outputFunc):
     with StringIO() as stdout, redirect_stdout(stdout):
@@ -41,6 +42,8 @@ allMatchData = getAllData()
 dates = list(allMatchData.keys())
 
 db = RefereeDbCockroach()
+
+db.addVisitor(st.experimental_user.email)
 
 if 'mentor' not in st.session_state:
     st.session_state.mentor = 'mentor'
@@ -99,7 +102,6 @@ tab = pills("Please select an activity", ["Enter a Mentor Report", "Generate Rep
 if tab == "Enter a Mentor Report":
 
     selectionBoxData = yearData
-    st.write(st.experimental_user.email)
 
     def parseRefName(name: str) -> Tuple[str, str]:
         '''
