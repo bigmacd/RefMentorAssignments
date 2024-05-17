@@ -131,16 +131,19 @@ def generateNewWorkload(currentu: list,
 
     for field, details in current.items():
         fieldsOnce = False
-        buffer[field] = {}
         for game in details:
 
-            buffer[field][game] = []
             center = details[game]['Center'].lower()
             ar1 = details[game]['AR1'].lower()
             ar2 = details[game]['AR2'].lower()
 
             if center not in newRefs and ar1 not in newRefs and ar2 not in newRefs:
                 continue
+
+            if field not in buffer:
+                buffer[field] = {}
+
+            buffer[field][game] = []
 
             cmarker = ''
             if center in mentored and 'Center' in mentored[center]:

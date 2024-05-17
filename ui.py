@@ -537,13 +537,3 @@ elif tab == 'See Current Workload':
                                 st.button("claim", key=k)
                             else:
                                 st.empty()
-
-
-
-
-    # data.keys()
-    #     dict_keys(['Jackson 1A - school side', 'Jackson 1B - Shed side', 'Ken Lawrence #2', 'Marshall Back Field Turf', 'Marshall HS 3 left', 'Marshall HS 3 right', 'Nottoway 4', 'Oakmont 2', 'Oakton HS 3 Full field', 'Oakton HS#3L', 'Oakton HS#3R (near road)', 'Oakton Stadium', 'Quantum Field'])
-    # data['Jackson 1A - school side']
-    #     {'773410': ['', 'Field: Jackson 1A - school side', '    ID: 773410, Date: 05/18/2024, Time: 2:15 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR1: Jaigan Lamba** ', '        New Ref at AR2: Alex Marshall '], '773411': ['    ID: 773411, Date: 05/18/2024, Time: 3:30 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR1: Jaigan Lamba** ', '        New Ref at AR2: Alex Marshall '], '773413': ['    ID: 773413, Date: 05/18/2024, Time: 4:45 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR2: Simon Crabb** '], '773414': ['    ID: 773414, Date: 05/18/2024, Time: 6:00 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR2: Simon Crabb** ']}
-    # data['Jackson 1A - school side']['773410']
-    #      ['', 'Field: Jackson 1A - school side', '    ID: 773410, Date: 05/18/2024, Time: 2:15 PM, Age: U-11, Level: U11 Girls House', '        New Ref at AR1: Jaigan Lamba** ', '        New Ref at AR2: Alex Marshall ']
