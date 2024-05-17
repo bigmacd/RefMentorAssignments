@@ -303,6 +303,12 @@ class MySoccerLeague(RefereeWebSite):
                         elif f == 'Joseph':
                             if x == 'Sandoval':
                                 last = f"{l} {x}"
+                        elif f == 'Mohamed':
+                            if l == 'Nour':
+                                last = l + ' ' + x
+                        elif f == 'Jack':
+                            if x == 'Raaphorst':
+                                last = l + ' ' + x
                         else:
                             print(f'Error parsing: {refereeFullName}: f: {f} l: {l}, x:{x}')
 
