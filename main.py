@@ -172,16 +172,16 @@ def generateNewWorkload(currentu: list,
             age = details[game]['age']
             level = details[game]['level']
 
-            buffer[field][game].append(f'    ID: {game}, Date: {date}, Time: {gameTime}, Age: {age}, Level: {level}')
+            buffer[field][game].append(f'ID: {game}, Date: {date}, Time: {gameTime}, Age: {age}, Level: {level}')
 
             if center in newRefs:
-                buffer[field][game].append(f'        New Ref at Center: {center.title()}{cmarker} {crisky}')
+                buffer[field][game].append(f'New Ref at Center: {center.title()}{cmarker} {crisky}')
 
             if ar1 in newRefs:
-                buffer[field][game].append(f'        New Ref at AR1: {ar1.title()}{a1marker} {a1risky}')
+                buffer[field][game].append(f'New Ref at AR1: {ar1.title()}{a1marker} {a1risky}')
 
             if ar2 in newRefs:
-                buffer[field][game].append(f'        New Ref at AR2: {ar2.title()}{a2marker} {a2risky}')
+                buffer[field][game].append(f'New Ref at AR2: {ar2.title()}{a2marker} {a2risky}')
 
     return buffer
 

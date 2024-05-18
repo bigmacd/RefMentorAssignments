@@ -40,10 +40,13 @@ st.set_page_config(layout='wide')
 # get all the data we can, avoids a bunch of calls to the website
 def initializeData():
     allMatchData = getAllData()
-    workload = run(True)
-    return allMatchData, workload
+    return allMatchData
 
-allMatchData, workload = initializeData()
+allMatchData = initializeData()
+
+@st.cache_data
+def initWorkloadData():
+    return run(True)
 
 dates = list(allMatchData.keys())
 
@@ -285,7 +288,6 @@ if tab == "Enter a Mentor Report":
         formReset()
     #----------------------------------------------------
 
-
     #----------------------------------------------------
     # This handles the clicking of the Save button
     # Save the mentor's comments for each of the selected
@@ -491,6 +493,13 @@ elif tab == 'Generate Reports':
 
 #with tab3:
 elif tab == 'See Current Workload':
+
+
+    def handleClaimButton():
+        pass
+
+
+    workload = initWorkloadData()
     skipKeys = ['mslUsername', 'mslPassword', 'db_url']
     # write the file needed by google auth from Streamlit secrets
     with open(credFile, 'w') as fp:
@@ -529,11 +538,14 @@ elif tab == 'See Current Workload':
                         if item.startswith("Field:"):
                             continue
                         with col1:
+                            # if item.startswith("New Ref"):
+                            #     st.text('------')
+                            # else:
                             st.empty()
                         with col2:
                             st.text(item)
                         with col3:
-                            if item.strip().startswith("ID:"):
+                            if item.startswith("ID:"):
                                 st.button("claim", key=k)
                             else:
                                 st.empty()

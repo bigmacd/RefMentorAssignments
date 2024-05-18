@@ -50,16 +50,12 @@ class RefereeDbCockroach(object):
 
 
     def _createNewGameDetailTable(self):
-            sql = """CREATE TABLE gamedetails ( id SERIAL PRIMARY KEY,
-                                                venue TEXT NOT NULL,
-                                                gameId TEXT NOT NULL,
-                                                center TEXT NOT NULL,
-                                                ar1 TEXT NOT NULL,
-                                                ar2 TEXT NOT NULL,
-                                                date text NOT NULL,
-                                                time TEXT NOT NULL,
-                                                age TEXT NOT NULL,
-                                                level TEXT NOT NULL)"""
+            sql = """CREATE TABLE gamedetails (id SERIAL PRIMARY KEY,
+                                                        mentor INTEGER NOT NULL,
+                                                        mentee INTEGER NOT NULL,
+                                                        position TEXT NOT NULL,
+                                                        date TIMESTAMP NOT NULL,
+                                                        comments TEXT NOT NULL)"""
             self.cursor.execute(sql)
 
 
