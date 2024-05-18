@@ -43,7 +43,8 @@ dates = list(allMatchData.keys())
 
 db = RefereeDbCockroach()
 
-db.addVisitor(st.experimental_user.email)
+if st.experimental_user.email != "test@test.com":
+    db.addVisitor(st.experimental_user.email)
 
 if 'mentor' not in st.session_state:
     st.session_state.mentor = 'mentor'
