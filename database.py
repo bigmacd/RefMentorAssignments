@@ -176,7 +176,7 @@ class RefereeDbCockroach(object):
     def getNewReferees(self) -> list:
         today = datetime.today()
         year = today.year
-        sql = "SELECT firstname, lastname from referees where year_certified = %s"
+        sql = "SELECT firstname, lastname from referees where year_certified >= %s"
         r = self.cursor.execute(sql, (year,))
         return r.fetchall()
 
