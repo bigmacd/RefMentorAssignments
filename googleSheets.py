@@ -42,7 +42,13 @@ def _getThisYearsNewRefs(allRefs: list) -> list:
         certDate = datetime.datetime.strptime(ref[1], '%m/%d/%Y')
         if _isLastSixMonths(certDate, now):
             year = adjustPerUSSF(certDate)
-            l, f = ref[0].split(',')
+            try:
+                l, f = ref[0].split(',')
+            except ValueError:
+                if ref[0] == 'jeremie-alexandre':
+                    continue
+                else:
+                    raise ValueError
             retVal.append((l.strip(), f.strip(), year))
     return retVal
 

@@ -320,7 +320,8 @@ if tab == "Enter a Mentor Report":
                                                     id[1], # position
                                                     st.session_state['dateKey'],
                                                     st.session_state['comments'],
-                                                    revisit)
+                                                    revisit,
+                                                    currentMatch['GameID'])
 
             if status:
 

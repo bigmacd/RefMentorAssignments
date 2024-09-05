@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import os
 import psycopg
-from typing import Tuple
+from typing import Tuple, Union
 
 
 class RefereeDbCockroach(object):
@@ -22,6 +22,17 @@ class RefereeDbCockroach(object):
             if not self.cursor.fetchone()[0] == 1:
                 self._createVisitorsTable()
 
+            sql = """SELECT column_name FROM information_schema.columns WHERE table_name = 'mentor_sessions'"""
+            found = False
+            self.cursor.execute(sql)
+            r = self.cursor.fetchall()
+            for column in r:
+                if column[0] == 'gameid':
+                    found = True
+                    break
+            if not found:
+                self._extendMentorSessionWithGameID()
+
     def createDb(self) -> bool:
 
         sql = """CREATE TABLE referees (id SERIAL PRIMARY KEY,
@@ -39,6 +50,7 @@ class RefereeDbCockroach(object):
                                                 mentor INTEGER NOT NULL,
                                                 mentee INTEGER NOT NULL,
                                                 position TEXT NOT NULL,
+                                                gameid TEXT NOT NULL,
                                                 date TIMESTAMP NOT NULL,
                                                 comments TEXT NOT NULL)"""
         self.cursor.execute(sql)
@@ -71,6 +83,11 @@ class RefereeDbCockroach(object):
         sql = """CREATE TABLE visitors (id SERIAL PRIMARY KEY,
                                         email TEXT NOT NULL,
                                         date TIMESTAMP NOT NULL DEFAULT NOW())"""
+        self.cursor.execute(sql)
+
+
+    def _extendMentorSessionWithGameID(self):
+        sql = """ALTER TABLE mentor_sessions ADD COLUMN gameid TEXT"""
         self.cursor.execute(sql)
 
 
@@ -232,10 +249,22 @@ class RefereeDbCockroach(object):
     def getMentoringSessionDetails(self, year: int) -> dict:
 
         range = [f'{year}-01-01', f'{year}-12-31']
-        sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name \
+        sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name, ms.gameid \
               from mentor_sessions ms \
               join referees r on ms.mentee = r.id join mentors me on ms.mentor = me.id \
               where ms.date between '{range[0]}' and '{range[1]}' ORDER BY ms.date"
+
+
+        """select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name, ms.gameid,
+        g.venue, g.date, g.time, g.age, g.level
+        from mentor_sessions ms
+        join referees r on ms.mentee = r.id
+        join mentors me on ms.mentor = me.id
+        -- join gamedetails g on (ms.gameid = g.gameid) OR (NULLIF(ms.gameid, '')) IS NULL
+        -- full outer join gamedetails g on (ms.gameid = g.gameid) OR ms.gameid IS NULL
+        where ms.date between '2024-01-01' and '2024-12-31' ORDER BY ms.date"""
+
+
         r = self.cursor.execute(sql)
         return r.fetchall()
 
@@ -345,14 +374,15 @@ class RefereeDbCockroach(object):
                             position: str,
                             date: str,
                             comments: str,
-                            isRisky: bool) -> Tuple[bool, str]:
+                            isRisky: bool,
+                            gameID: str) -> Tuple[bool, str]:
         if not isRisky:
             self._removeRisky(mentee)
-            return self.addMentorSession(mentor, mentee, position, date, comments)
+            #return self.addMentorSession(mentor, mentee, position, date, comments)
 
 
-        sql = 'INSERT INTO mentor_sessions (mentor, mentee, position, date, comments) \
-               VALUES (%s, %s, %s, %s, %s) RETURNING id'
+        sql = 'INSERT INTO mentor_sessions (mentor, mentee, position, date, gameID, comments) \
+               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id'
         mentorId = self.findMentor(mentor.split(' ')[0], mentor.split(' ')[1])
         menteeId = self.findReferee(mentee.split(' ')[1], mentee.split(' ')[0])
         if mentorId is None:
@@ -368,6 +398,7 @@ class RefereeDbCockroach(object):
                                 menteeId[0],
                                 position,
                                 dt,
+                                gameID,
                                 comments])
             newId = self.cursor.fetchone()[0]
 
@@ -378,24 +409,41 @@ class RefereeDbCockroach(object):
             self.setIsRisky(menteeId[0], newId, dt)
             return (True, "Mentor Report successfully submitted!")
 
-    def _getTextFromSessions(self, sessions):
+    def _getTextFromSessions(self, sessions, gamedetails: Union[list, None]):
         retVal = ''
         # [0] is firstname, [1] is lastname, [2] is position
         # [3] is date and [4] is comments
+        # [7] is gameid
         sessionData = {}
+
+        # gamedetails
+        # key is gameid
+        # data is dict of venue, date, time, age, league
 
         for session in sessions:
             date = session[3]
+            gameid = session[7]
             if date not in sessionData: # session[3] is date
                 sessionData[date] = []
 
-            sessionData[date].append(
-                {
-                    'ref': f'{session[0].capitalize()} {session[1].capitalize()}',
-                    'position': session[2],
-                    'mentor': f'{session[6].capitalize()} {session[5].capitalize()}',
-                    'comments': session[4]
-                })
+
+            sessionDetails = {
+                'ref': f'{session[0].capitalize()} {session[1].capitalize()}',
+                'position': session[2],
+                'mentor': f'{session[6].capitalize()} {session[5].capitalize()}',
+                'comments': session[4]
+            }
+
+            if gamedetails is not None:
+                if gameid in gamedetails:
+                    sessionDetails['venue'] = gamedetails[gameid]['venue']
+                    sessionDetails['date'] = gamedetails[gameid]['date']
+                    sessionDetails['time'] = gamedetails[gameid]['time']
+                    sessionDetails['age'] = gamedetails[gameid]['age']
+                    sessionDetails['league'] = gamedetails[gameid]['league']
+
+
+            sessionData[date].append(sessionDetails)
 
         # build a big `ol string to returned as a download`
         for k, entries in sessionData.items():
@@ -404,14 +452,51 @@ class RefereeDbCockroach(object):
                 retVal += f"\tReferee: {entry['ref']}\r\n"
                 retVal += f"\tPosition: {entry['position']}\r\n"
                 retVal += f"\tMentor: {entry['mentor']}\r\n"
-                retVal += f"\tComments: {entry['comments']}\r\n\r\n"
+                retVal += f"\tComments: {entry['comments']}\r\n"
+                if 'venue' in entry and 'date' in entry and 'time' in entry and 'age' in entry and 'league' in entry:
+                    pass
+                retVal += "\tGame Details:\r\n"
 
+
+                retVal += "\r\n"
+
+
+        return retVal
+
+
+    def _getGameDetails(self, gameids: list) -> dict:
+        # db returns id, venue, gameid, center, ar1, ar2, date, time, age, league
+        clause = ",".join("'%s'" % id for id in gameids)
+        sql = "SELECT * from gamedetails where gameid in ({0})".format(clause)
+        r = self.cursor.execute(sql)
+        gamedetails = r.fetchall()
+        return self._pivotGameDetails(gamedetails)
+
+
+    def _pivotGameDetails(gamedetails: list) -> dict:
+        retVal = {}
+        for game in gamedetails:
+            gameid = game[2]
+            if gameid not in retVal:
+                retVal[gameid] = {}
+            retVal[gameid]['venue'] = game[1]
+            retVal[gameid]['date'] = game[6]
+            retVal[gameid]['time'] = game[7]
+            retVal[gameid]['age'] = game[8]
+            retVal[gameid]['league'] = game[9]
         return retVal
 
 
     def produceYearReport(self, year, reportType):
         sessions = self.getMentoringSessionDetails(year)
-        return self._getTextFromSessions(sessions)
+        ids = []
+        for session in sessions:
+            if session[7] is not None:
+                ids.append(session[7])
+
+        gamedetails = self._getGameDetails(ids)
+
+        return self._getTextFromSessions(sessions, gamedetails)
 
 
     def produceWeekReport(self, week, reportType):
