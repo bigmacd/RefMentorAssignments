@@ -195,7 +195,7 @@ if __name__ == "__main__":
         half = numEmails/2
         once = False
         for x, email in enumerate(emails):
-            if email == os.environ.get('badmentor1') or email == os.environ.get('badmentor2'):
+            if email == os.environ.get('badmentor1') or email == os.environ.get('badmentor2') or email == os.environ.get('badmentor3'):
                 continue
             if x >= half and once is False:
                 for _ in range(0, 5):
