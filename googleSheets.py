@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 
 # refmentoring-530@psyched-runner-378322.iam.gserviceaccount.com
@@ -42,7 +43,11 @@ def _getThisYearsNewRefs(allRefs: list) -> list:
         certDate = datetime.datetime.strptime(ref[1], '%m/%d/%Y')
         if _isLastSixMonths(certDate, now):
             year = adjustPerUSSF(certDate)
-            l, f = ref[0].split(',')
+            try:
+                l, f = ref[0].split(',')
+            except Exception:
+                logging.warning(f"Error processing {ref[0]} from spreadsheet")
+                continue
             retVal.append((l.strip(), f.strip(), year))
     return retVal
 
