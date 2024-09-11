@@ -315,7 +315,7 @@ class MySoccerLeague(RefereeWebSite):
                             if x == 'Habri':
                                 last = f"{l} {x}"
                         elif f == 'William':
-                            if l == 'Covey':
+                            if l == 'Covey,':
                                 if x == 'Jr':
                                     l = l.strip(',')
                                     last = f"{l} {x}"
