@@ -40,15 +40,18 @@ def _getThisYearsNewRefs(allRefs: list) -> list:
     retVal = []
 
     for ref in allRefs:
-        certDate = datetime.datetime.strptime(ref[1], '%m/%d/%Y')
-        if _isLastSixMonths(certDate, now):
-            year = adjustPerUSSF(certDate)
-            try:
-                l, f = ref[0].split(',')
-            except Exception:
-                logging.warning(f"Error processing {ref[0]} from spreadsheet")
-                continue
-            retVal.append((l.strip(), f.strip(), year))
+        try:
+            certDate = datetime.datetime.strptime(ref[1], '%m/%d/%Y')
+            if _isLastSixMonths(certDate, now):
+                year = adjustPerUSSF(certDate)
+                try:
+                    l, f = ref[0].split(',')
+                except Exception:
+                    logging.warning(f"Error processing {ref[0]} from spreadsheet")
+                    continue
+                retVal.append((l.strip(), f.strip(), year))
+        except Exception as ex:
+            logging.warning(f"Error processing {ref[0]} from spreadsheet")
     return retVal
 
 

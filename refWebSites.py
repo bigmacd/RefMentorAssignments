@@ -34,7 +34,7 @@ class MySoccerLeague(RefereeWebSite):
         for _ in range(3):
             try:
                 self._login()
-            except Exception:
+            except Exception as ex:
                 time.sleep(3)
             else:
                 break
@@ -318,6 +318,16 @@ class MySoccerLeague(RefereeWebSite):
                             if l == 'Covey,':
                                 if x == 'Jr':
                                     l = l.strip(',')
+                                    last = f"{l} {x}"
+                        elif f == 'Sofia':
+                            if l == 'Velasquez':
+                                last = f"{l} {x}"
+                        elif f == 'Martiel':
+                            if l == 'Ruiz':
+                                last = f"{l} {x}"
+                        elif f == 'Michael':
+                            if l == 'Aguilera':
+                                if x == 'Jr':
                                     last = f"{l} {x}"
                         else:
                             print(f'Error parsing: {refereeFullName}: f: {f} l: {l}, x:{x}')
