@@ -98,7 +98,8 @@ class RefereeDbCockroach(object):
 
 
     def _removeRisky(self, mentee: str):
-        menteeId = self.findReferee(mentee.split(' ')[1], mentee.split(' ')[0])
+        f, l = mentee.split(' ', 1)
+        menteeId = self.findReferee(l, f)
         menteeId = 1
         sql = f"DELETE FROM risky WHERE mentee = '{menteeId}'"
         self.cursor.execute(sql)
@@ -254,7 +255,7 @@ class RefereeDbCockroach(object):
 
     def getMentoringsessionsForReferee(self, referee: str) -> dict:
         # referee string is like "Kate Curby"
-        firstname, lastname = referee.split(' ')
+        firstname, lastname = referee.split(' ', 1)
         sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name \
               from mentor_sessions ms \
               join referees r on ms.mentee = r.id join mentors me on ms.mentor = me.id \
@@ -266,7 +267,7 @@ class RefereeDbCockroach(object):
 
     def getMentoringsessionsForMentor(self, mentor: str) -> dict:
         # mentor string is like "David Helfgott"
-        firstname, lastname = mentor.split(' ')
+        firstname, lastname = mentor.split(' ', 1)
         sql = f"select r.firstname, r.lastname, ms.position, ms.date, ms.comments, me.mentor_last_name, me.mentor_first_name \
               from mentor_sessions ms \
               join referees r on ms.mentee = r.id join mentors me on ms.mentor = me.id \
@@ -316,8 +317,9 @@ class RefereeDbCockroach(object):
                          comments: str) -> Tuple[bool, str]:
         sql = 'INSERT INTO mentor_sessions (mentor, mentee, position, date, comments) \
                VALUES (%s, %s, %s, %s, %s)'
+        f, l = mentee.split(' ', 1)
         mentorId = self.findMentor(mentor.split(' ')[0], mentor.split(' ')[1])
-        menteeId = self.findReferee(mentee.split(' ',1)[1], mentee.split(' ')[0])
+        menteeId = self.findReferee(l, f)
         if mentorId is None:
             return (False, f'Could not find mentor details for {mentor}')
         if menteeId is None:
@@ -353,8 +355,9 @@ class RefereeDbCockroach(object):
 
         sql = 'INSERT INTO mentor_sessions (mentor, mentee, position, date, comments) \
                VALUES (%s, %s, %s, %s, %s) RETURNING id'
+        f, l = mentee.split(' ', 1)
         mentorId = self.findMentor(mentor.split(' ')[0], mentor.split(' ')[1])
-        menteeId = self.findReferee(mentee.split(' ')[1], mentee.split(' ')[0])
+        menteeId = self.findReferee(l, f)
         if mentorId is None:
             return (False, f'Could not find mentor details for {mentor}')
         if menteeId is None:
