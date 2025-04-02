@@ -51,7 +51,7 @@ def _getThisYearsNewRefs(allRefs: list) -> list:
                     continue
                 retVal.append((l.strip(), f.strip(), year))
         except Exception as ex:
-            logging.warning(f"Error processing {ref[0]} from spreadsheet")
+            logging.warning(f"Top Level Error processing {ref[0]} from spreadsheet")
     return retVal
 
 
@@ -63,11 +63,11 @@ def getRefsFromGoogleSignupSheet() -> list:
     spreadsheet = client.open('Referee Certification and Eligibility (Responses)')
     worksheet = spreadsheet.worksheet('Form Responses 1')
 
-    names = worksheet.col_values(3)
+    names = worksheet.col_values(4)
     names.pop(0) # the column headers
     names = list(map(_toLower, names))
 
-    years = worksheet.col_values(8)
+    years = worksheet.col_values(10)
     years.pop(0)
 
 
