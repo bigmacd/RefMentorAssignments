@@ -150,6 +150,8 @@ if tab == "Enter a Mentor Report":
     #----------------------------------------------------
     # Specify the date - list of dates comes from MSL
     dateIndex = getCurrentDateIndex(dates)
+    if dates[dateIndex].startswith('Tuesday'):
+        dateIndex = dateIndex + 1
     st.selectbox("Please select the date of the match:", dates, index=dateIndex, key='dateKey')
     dateInfo = st.session_state['dateKey']
     #----------------------------------------------------
