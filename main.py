@@ -1,5 +1,6 @@
 import argparse
 import datetime
+from datetime import timedelta, datetime
 import mechanicalsoup
 import os
 
@@ -15,6 +16,7 @@ def getRealTimeCurrentRefAssignments(br: mechanicalsoup.stateful_browser.Statefu
     """
     Log into the MySoccerLeague website and pull all assignments for the weekend"""
     site = MySoccerLeague(br)
+    site.setSpecificDate(datetime.now() - timedelta(days=1))
     assignments = site.getAssignments()
     return assignments
 
@@ -124,10 +126,10 @@ def run() -> None:
     """
     Make sure database is up-to-date with VYS new referee spreadsheet
     """
-    latestRefs = getRefsFromGoogleSignupSheet()
+    latestRefsFromSpreadsheet = getRefsFromGoogleSignupSheet()
     # returns list of tuples (lastname, firstname, year_certified)
 
-    for ref in latestRefs:
+    for ref in latestRefsFromSpreadsheet:
         if not db.refExists(ref[0], ref[1]):
             print(f"{ref[1].capitalize()} {ref[0].capitalize()} not in database, adding")
             db.addReferee(ref[0], ref[1], ref[2])
@@ -138,7 +140,7 @@ def run() -> None:
     br = mechanicalsoup.StatefulBrowser(soup_config={ 'features': 'lxml'})
     br.addheaders = [('User-agent', 'Chrome')]
 
-    allRefs = getAllRefereesFromSite(br)
+    allRefsFromMSL = getAllRefereesFromSite(br)
     # return list of tuples (firstname, lastname)
 
     # This was a one-time thing?
@@ -156,7 +158,7 @@ def run() -> None:
     # returns list of tuples (firstname, lastname)
 
     for ref in newRefs:
-         if ref not in allRefs:
+         if ref not in allRefsFromMSL:
              print (f'Referee: {ref[0]} {ref[1]} not in MSL, check name spelling')
 
     # get this week's current assignments
@@ -186,21 +188,21 @@ def getEmails():
 
 
 if __name__ == "__main__":
+    bademails = [
+        os.environ.get('badmentor1'),
+        os.environ.get('badmentor2'),
+        os.environ.get('badmentor3')
+    ]
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', action="store_true")
     args = parser.parse_args()
     if args.e is True:
         emails = getEmails()
-        numEmails = len(emails)
-        half = numEmails/2
-        once = False
+        emails = sorted(emails)
+        print(f"Retrieved {len(emails)} email addresses from MSL")
         for x, email in enumerate(emails):
-            if email == os.environ.get('badmentor1') or email == os.environ.get('badmentor2') or email == os.environ.get('badmentor3'):
+            if email in bademails:
                 continue
-            # if x >= half and once is False:
-            #     for _ in range(0, 5):
-            #         print("")
-            #         once = True
             print(email)
     else:
         run()

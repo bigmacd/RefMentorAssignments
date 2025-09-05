@@ -112,14 +112,38 @@ if tab == "Enter a Mentor Report":
         #st.write(f'refname: {name}')
         if name == '(requested)':
             return [None, None]
-        parts = name.split(',') # see "Michael Aguilera, Sr."
-        #st.write(f'parts: {str(parts)}')
+            
+        # Remove extra spaces and trim
+        name = ' '.join(name.split())
+        
+        # Handle comma-separated format like "Aguilera, Michael Jr."
+        parts = name.split(',')
         if len(parts) > 1:
-            return parts[0].split(' ')
+            # For "Last, First [Suffix]" format
+            first_parts = parts[1].strip().split()
+            return [first_parts[0], parts[0].strip()]
+            
+        # Handle format with no comma like "Michael Aguilera Jr."
         parts = name.split(' ')
-        if len(parts) > 2:  # see 'Will Covey III'
-            return (parts[0], parts[1])
-        return parts
+        if len(parts) == 0:
+            return [None, None]
+        elif len(parts) == 1:
+            return [parts[0], ""]
+        elif len(parts) == 2:
+            return [parts[0], parts[1]]
+        else:
+            # For names with more than two parts, check for common suffixes
+            suffixes = ["Jr.", "Jr", "Sr.", "Sr", "III", "IV", "II"]
+            if parts[-1] in suffixes:
+                # If last part is a suffix, combine the middle parts as last name
+                first_name = parts[0]
+                last_name = ' '.join(parts[1:-1]) + ' ' + parts[-1]
+                return [first_name, last_name]
+            else:
+                # Otherwise, first part is first name, rest is last name
+                first_name = parts[0]
+                last_name = ' '.join(parts[1:])
+                return [first_name, last_name]
 
 
     def getCurrentDateIndex(dates: list) -> int:
