@@ -67,7 +67,7 @@ def getRefsFromGoogleSignupSheet() -> list:
     names.pop(0) # the column headers
     names = list(map(_toLower, names))
 
-    years = worksheet.col_values(10)
+    years = worksheet.col_values(11)
     years.pop(0)
 
 

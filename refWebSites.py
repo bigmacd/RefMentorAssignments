@@ -276,7 +276,10 @@ class MySoccerLeague(RefereeWebSite):
 
                         last = None
 
-                        if f == 'Alexandre':
+                        if f == 'Russell':
+                            if x == 'Bower':
+                                last = x
+                        elif f == 'Alexandre':
                             if l == 'de':
                                 last = l + ' ' + x
                         elif f == 'Will':
@@ -327,7 +330,7 @@ class MySoccerLeague(RefereeWebSite):
                                 last = f"{l} {x}"
                         elif f == 'Michael':
                             if l == 'Aguilera':
-                                if x == 'Jr':
+                                if x == 'Jr.':
                                     last = f"{l} {x}"
                         elif f == 'Mary':
                             if l == 'Kate':
@@ -337,7 +340,7 @@ class MySoccerLeague(RefereeWebSite):
                             if x == "Pechenik":
                                 last = x
                         else:
-                            print(f'Error parsing: {refereeFullName}: f: {f} l: {l}, x:{x}')
+                            print(f'Error parsing: {refereeFullName}: f: {f} l: {l} x:{x}')
 
                         if last is None:
                             print(f'Error parsing: {refereeFullName}: f: {f} l: {l}, x:{x}')

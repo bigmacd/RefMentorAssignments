@@ -91,6 +91,23 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
             a2risky = '##' if ar2 in risky else ''
 
 
+
+            # trying to reduce output a bit
+            # if the crew is new and has already been mentored (but not flagged as needed follow-up), skip
+            if center in newRefs:
+                if cmarker == '**' and crisky == '':
+                    newRefs.remove(center)
+            if ar1 in newRefs:
+                if a1marker == '**' and a1risky == '':
+                    newRefs.remove(ar1)
+            if ar2 in newRefs:
+                if a2marker == '**' and a2risky == '':
+                    newRefs.remove(ar2)
+            if center not in newRefs and ar1 not in newRefs and ar2 not in newRefs:
+                continue
+
+
+
             if not fieldsOnce:
                 print("")
                 print(f'Field: {field}')
