@@ -254,7 +254,6 @@ class MySoccerLeague(RefereeWebSite):
         for _ in range(3):
             try:
                 url = 'https://www.mysoccerleague.com/AddRef.jsp?YSLkey={0}&actionName=Referees&showAll=true'.format(self._loginKey)
-                print(f"checking {url}")
                 page = self._browser.open(url)
 
                 entries1 = page.soup.find_all("tr", { "class" : 'trstyle1' })
