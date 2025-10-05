@@ -112,17 +112,17 @@ if tab == "Enter a Mentor Report":
         #st.write(f'refname: {name}')
         if name == '(requested)':
             return [None, None]
-            
+
         # Remove extra spaces and trim
         name = ' '.join(name.split())
-        
+
         # Handle comma-separated format like "Aguilera, Michael Jr."
         parts = name.split(',')
         if len(parts) > 1:
             # For "Last, First [Suffix]" format
             first_parts = parts[1].strip().split()
             return [first_parts[0], parts[0].strip()]
-            
+
         # Handle format with no comma like "Michael Aguilera Jr."
         parts = name.split(' ')
         if len(parts) == 0:
@@ -241,6 +241,7 @@ if tab == "Enter a Mentor Report":
         with col3:
             #disabled = True
             refname = currentMatch['AR2']
+            st.write(f"AR2 refname: {refname}")
             if refname != 'Not Used' and refname != 'None':
                 fname, lname = parseRefName(refname)
             #    if db.findReferee(lname, fname):
