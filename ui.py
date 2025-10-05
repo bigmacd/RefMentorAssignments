@@ -241,7 +241,6 @@ if tab == "Enter a Mentor Report":
         with col3:
             #disabled = True
             refname = currentMatch['AR2']
-            st.write(f"AR2 refname: {refname}")
             if refname != 'Not Used' and refname != 'None':
                 fname, lname = parseRefName(refname)
             #    if db.findReferee(lname, fname):
