@@ -135,3 +135,8 @@ obj
 appsettings.json
 local.settings.json
 .python_packages
+
+# Sensitive files
+*.json
+.streamlit/secrets.toml
+psyched-runner-378322-*.json
