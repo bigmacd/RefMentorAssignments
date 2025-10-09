@@ -140,3 +140,4 @@ local.settings.json
 *.json
 .streamlit/secrets.toml
 psyched-runner-378322-*.json
+.loadenv.sh
