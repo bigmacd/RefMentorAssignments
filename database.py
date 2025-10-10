@@ -22,6 +22,10 @@ class RefereeDbCockroach(object):
             if not self.cursor.fetchone()[0] == 1:
                 self._createVisitorsTable()
 
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='users'")
+            if not self.cursor.fetchone()[0] == 1:
+                self._createUsersTable()
+
     def createDb(self) -> bool:
 
         sql = """CREATE TABLE referees (id SERIAL PRIMARY KEY,
@@ -51,6 +55,7 @@ class RefereeDbCockroach(object):
 
         self._createNewGameDetailTable()
         self._createVisitorsTable()
+        self._createUsersTable()
 
 
     def _createNewGameDetailTable(self):
@@ -71,6 +76,17 @@ class RefereeDbCockroach(object):
         sql = """CREATE TABLE visitors (id SERIAL PRIMARY KEY,
                                         email TEXT NOT NULL,
                                         date TIMESTAMP NOT NULL DEFAULT NOW())"""
+        self.cursor.execute(sql)
+
+    def _createUsersTable(self):
+        sql = """CREATE TABLE users (id SERIAL PRIMARY KEY,
+                                     username TEXT UNIQUE NOT NULL,
+                                     password_hash TEXT NOT NULL,
+                                     salt TEXT NOT NULL,
+                                     email TEXT UNIQUE NOT NULL,
+                                     role TEXT NOT NULL DEFAULT 'user',
+                                     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                                     last_login TIMESTAMP)"""
         self.cursor.execute(sql)
 
 
@@ -472,3 +488,76 @@ class RefereeDbCockroach(object):
                                             game['gameTime'],
                                             game['age'],
                                             game['level']))
+
+    # User management methods for authentication
+
+    def user_exists(self, username: str) -> bool:
+        """Check if a username already exists"""
+        sql = "SELECT id FROM users WHERE username = %s"
+        self.cursor.execute(sql, (username.lower(),))
+        return self.cursor.fetchone() is not None
+
+    def email_exists(self, email: str) -> bool:
+        """Check if an email already exists"""
+        sql = "SELECT id FROM users WHERE email = %s"
+        self.cursor.execute(sql, (email.lower(),))
+        return self.cursor.fetchone() is not None
+
+    def create_user(self, username: str, password_hash: str, salt: str, email: str, role: str = 'user') -> None:
+        """Create a new user"""
+        sql = "INSERT INTO users (username, password_hash, salt, email, role) VALUES (%s, %s, %s, %s, %s)"
+        self.cursor.execute(sql, (username.lower(), password_hash, salt, email.lower(), role))
+        self.connection.commit()
+
+    def get_user_by_username(self, username: str) -> dict:
+        """Get user by username"""
+        sql = "SELECT id, username, password_hash, salt, email, role, created_at, last_login FROM users WHERE username = %s"
+        self.cursor.execute(sql, (username.lower(),))
+        row = self.cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'password_hash': row[2],
+                'salt': row[3],
+                'email': row[4],
+                'role': row[5],
+                'created_at': row[6],
+                'last_login': row[7]
+            }
+        return None
+
+    def get_all_users(self) -> list:
+        """Get all users"""
+        sql = "SELECT id, username, email, role, created_at, last_login FROM users ORDER BY username"
+        self.cursor.execute(sql)
+        rows = self.cursor.fetchall()
+        users = []
+        for row in rows:
+            users.append({
+                'id': row[0],
+                'username': row[1],
+                'email': row[2],
+                'role': row[3],
+                'created_at': row[4],
+                'last_login': row[5]
+            })
+        return users
+
+    def update_user_password(self, username: str, password_hash: str, salt: str) -> None:
+        """Update user password"""
+        sql = "UPDATE users SET password_hash = %s, salt = %s WHERE username = %s"
+        self.cursor.execute(sql, (password_hash, salt, username.lower()))
+        self.connection.commit()
+
+    def update_last_login(self, username: str) -> None:
+        """Update user's last login time"""
+        sql = "UPDATE users SET last_login = NOW() WHERE username = %s"
+        self.cursor.execute(sql, (username.lower(),))
+        self.connection.commit()
+
+    def delete_user(self, user_id: int) -> None:
+        """Delete a user"""
+        sql = "DELETE FROM users WHERE id = %s"
+        self.cursor.execute(sql, (user_id,))
+        self.connection.commit()

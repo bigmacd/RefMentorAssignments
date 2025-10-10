@@ -1,6 +1,6 @@
 
 # import logging
-# import os
+import os
 # x = os.getcwd()
 # logging.warning((f"cwd: {x}"))
 # for f in os.listdir(x):
@@ -17,6 +17,7 @@ from typing import Tuple
 from database import RefereeDbCockroach
 from excelWriter import getExcelFromText
 from googleSheets import credFile
+from auth import AuthManager, require_auth, show_user_management
 
 from main import run
 from uiData import getAllData
@@ -37,14 +38,36 @@ def stCapture(outputFunc):
 
 st.set_page_config(layout='wide')
 
+streamlitCloud = os.getenv('STREAMLIT_CLOUD', True)
+
+if not streamlitCloud:
+    # Initialize authentication
+    auth_manager = AuthManager()
+
+    # Require authentication - this will show login form if not authenticated
+    require_auth(auth_manager)
+
+    # Check if user management should be shown
+    if st.session_state.get('show_user_management', False):
+        show_user_management(auth_manager)
+        if st.button("← Back to Main App"):
+            st.session_state.show_user_management = False
+            st.rerun()
+        st.stop()
+
 # get all the data we can, avoids a bunch of calls to the website
 allMatchData = getAllData()
 dates = list(allMatchData.keys())
 
 db = RefereeDbCockroach()
 
-if st.experimental_user.email != "test@test.com":
-    db.addVisitor(st.experimental_user.email)
+# Track authenticated user visits
+if not streamlitCloud:
+    if  auth_manager.get_current_user():
+        db.addVisitor(auth_manager.get_current_user())
+else:
+    if st.experimental_user.email != "test@test.com":
+        db.addVisitor(st.experimental_user.email)
 
 if 'mentor' not in st.session_state:
     st.session_state.mentor = 'mentor'
