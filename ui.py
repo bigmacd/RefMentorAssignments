@@ -38,9 +38,9 @@ def stCapture(outputFunc):
 
 st.set_page_config(layout='wide')
 
-streamlitCloud = os.getenv('STREAMLIT_CLOUD', True)
+streamlitCloud = os.getenv('STREAMLIT_CLOUD', 'True')
 
-if not streamlitCloud:
+if streamlitCloud == 'False':
     # Initialize authentication
     auth_manager = AuthManager()
 

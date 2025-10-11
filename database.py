@@ -25,6 +25,10 @@ class RefereeDbCockroach(object):
             self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='users'")
             if not self.cursor.fetchone()[0] == 1:
                 self._createUsersTable()
+            
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='password_reset_tokens'")
+            if not self.cursor.fetchone()[0] == 1:
+                self._createPasswordResetTokensTable()
 
     def createDb(self) -> bool:
 
@@ -56,6 +60,7 @@ class RefereeDbCockroach(object):
         self._createNewGameDetailTable()
         self._createVisitorsTable()
         self._createUsersTable()
+        self._createPasswordResetTokensTable()
 
 
     def _createNewGameDetailTable(self):
@@ -87,6 +92,15 @@ class RefereeDbCockroach(object):
                                      role TEXT NOT NULL DEFAULT 'user',
                                      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                                      last_login TIMESTAMP)"""
+        self.cursor.execute(sql)
+    
+    def _createPasswordResetTokensTable(self):
+        sql = """CREATE TABLE password_reset_tokens (id SERIAL PRIMARY KEY,
+                                                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                                     token TEXT UNIQUE NOT NULL,
+                                                     expires_at TIMESTAMP NOT NULL,
+                                                     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                                                     used BOOLEAN NOT NULL DEFAULT FALSE)"""
         self.cursor.execute(sql)
 
 
@@ -560,4 +574,65 @@ class RefereeDbCockroach(object):
         """Delete a user"""
         sql = "DELETE FROM users WHERE id = %s"
         self.cursor.execute(sql, (user_id,))
+        self.connection.commit()
+    
+    def get_user_by_email(self, email: str) -> dict:
+        """Get user by email address"""
+        sql = "SELECT id, username, password_hash, salt, email, role, created_at, last_login FROM users WHERE email = %s"
+        self.cursor.execute(sql, (email.lower(),))
+        row = self.cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'password_hash': row[2],
+                'salt': row[3],
+                'email': row[4],
+                'role': row[5],
+                'created_at': row[6],
+                'last_login': row[7]
+            }
+        return None
+    
+    def create_password_reset_token(self, user_id: int, token: str, expires_at: datetime) -> None:
+        """Create a password reset token"""
+        # First, invalidate any existing tokens for this user
+        sql = "UPDATE password_reset_tokens SET used = TRUE WHERE user_id = %s AND used = FALSE"
+        self.cursor.execute(sql, (user_id,))
+        
+        # Create the new token
+        sql = "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)"
+        self.cursor.execute(sql, (user_id, token, expires_at))
+        self.connection.commit()
+    
+    def get_password_reset_token(self, token: str) -> dict:
+        """Get password reset token details"""
+        sql = """SELECT prt.id, prt.user_id, prt.token, prt.expires_at, prt.used, u.email, u.username 
+                 FROM password_reset_tokens prt 
+                 JOIN users u ON prt.user_id = u.id 
+                 WHERE prt.token = %s AND prt.used = FALSE AND prt.expires_at > NOW()"""
+        self.cursor.execute(sql, (token,))
+        row = self.cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'user_id': row[1],
+                'token': row[2],
+                'expires_at': row[3],
+                'used': row[4],
+                'email': row[5],
+                'username': row[6]
+            }
+        return None
+    
+    def use_password_reset_token(self, token: str) -> None:
+        """Mark a password reset token as used"""
+        sql = "UPDATE password_reset_tokens SET used = TRUE WHERE token = %s"
+        self.cursor.execute(sql, (token,))
+        self.connection.commit()
+    
+    def cleanup_expired_tokens(self) -> None:
+        """Remove expired password reset tokens"""
+        sql = "DELETE FROM password_reset_tokens WHERE expires_at < NOW()"
+        self.cursor.execute(sql)
         self.connection.commit()

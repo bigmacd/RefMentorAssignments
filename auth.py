@@ -1,15 +1,18 @@
 import hashlib
 import hmac
+import secrets
 import streamlit as st
+import time
+from datetime import datetime, timedelta
 from typing import Optional, Tuple
 from database import RefereeDbCockroach
 
 class AuthManager:
     """Handles user authentication and session management for the Streamlit app"""
-    
+
     def __init__(self):
         self.db = RefereeDbCockroach()
-        
+
         # Initialize session state variables for authentication
         if 'authenticated' not in st.session_state:
             st.session_state.authenticated = False
@@ -19,25 +22,30 @@ class AuthManager:
             st.session_state.user_role = None
         if 'user_id' not in st.session_state:
             st.session_state.user_id = None
-    
+        if 'show_forgot_password' not in st.session_state:
+            st.session_state.show_forgot_password = False
+        if 'show_reset_password' not in st.session_state:
+            st.session_state.show_reset_password = False
+        if 'reset_token' not in st.session_state:
+            st.session_state.reset_token = None
+
     def hash_password(self, password: str, salt: str = None) -> Tuple[str, str]:
         """Hash a password with salt"""
         if salt is None:
-            import secrets
             salt = secrets.token_hex(16)
-        
+
         # Use PBKDF2 for password hashing
-        password_hash = hashlib.pbkdf2_hmac('sha256', 
-                                          password.encode('utf-8'), 
-                                          salt.encode('utf-8'), 
+        password_hash = hashlib.pbkdf2_hmac('sha256',
+                                          password.encode('utf-8'),
+                                          salt.encode('utf-8'),
                                           100000)  # 100,000 iterations
         return password_hash.hex(), salt
-    
+
     def verify_password(self, password: str, hashed_password: str, salt: str) -> bool:
         """Verify a password against its hash"""
         password_hash, _ = self.hash_password(password, salt)
         return hmac.compare_digest(password_hash, hashed_password)
-    
+
     def authenticate_user(self, username: str, password: str) -> bool:
         """Authenticate a user with username and password"""
         user = self.db.get_user_by_username(username)
@@ -49,7 +57,7 @@ class AuthManager:
             st.session_state.user_id = user['id']
             return True
         return False
-    
+
     def logout(self):
         """Logout the current user"""
         st.session_state.authenticated = False
@@ -57,72 +65,122 @@ class AuthManager:
         st.session_state.user_role = None
         st.session_state.user_id = None
         st.rerun()
-    
+
     def is_authenticated(self) -> bool:
         """Check if user is authenticated"""
         return st.session_state.get('authenticated', False)
-    
+
     def get_current_user(self) -> Optional[str]:
         """Get the current authenticated username"""
         return st.session_state.get('username')
-    
+
     def get_user_role(self) -> Optional[str]:
         """Get the current user's role"""
         return st.session_state.get('user_role')
-    
+
     def is_admin(self) -> bool:
         """Check if current user is an admin"""
         return st.session_state.get('user_role') == 'admin'
-    
+
     def create_user(self, username: str, password: str, email: str, role: str = 'user') -> Tuple[bool, str]:
         """Create a new user account"""
         if self.db.user_exists(username):
             return False, "Username already exists"
-        
+
         if self.db.email_exists(email):
             return False, "Email already registered"
-        
+
         password_hash, salt = self.hash_password(password)
-        
+
         try:
             self.db.create_user(username, password_hash, salt, email, role)
             return True, "User created successfully"
         except Exception as e:
             return False, f"Error creating user: {str(e)}"
-    
+
     def change_password(self, username: str, old_password: str, new_password: str) -> Tuple[bool, str]:
         """Change user's password"""
         user = self.db.get_user_by_username(username)
         if not user:
             return False, "User not found"
-        
+
         if not self.verify_password(old_password, user['password_hash'], user['salt']):
             return False, "Current password is incorrect"
-        
+
         new_hash, new_salt = self.hash_password(new_password)
-        
+
         try:
             self.db.update_user_password(username, new_hash, new_salt)
             return True, "Password changed successfully"
         except Exception as e:
             return False, f"Error changing password: {str(e)}"
 
+    def generate_reset_token(self) -> str:
+        """Generate a secure password reset token"""
+        return secrets.token_urlsafe(32)
+
+    def request_password_reset(self, email: str) -> Tuple[bool, str]:
+        """Request a password reset for the given email"""
+        user = self.db.get_user_by_email(email)
+        if not user:
+            # Don't reveal whether the email exists or not for security
+            return True, "If the email exists in our system, a password reset link will be sent."
+
+        try:
+            # Generate reset token
+            token = self.generate_reset_token()
+            expires_at = datetime.now() + timedelta(hours=1)  # Token expires in 1 hour
+
+            # Store the token in database
+            self.db.create_password_reset_token(user['id'], token, expires_at)
+
+            # In a real implementation, you would send an email here
+            # For now, we'll show the token in the UI (not recommended for production)
+            st.session_state.reset_token = token
+
+            return True, f"Password reset requested. Your check your email for the reset link."
+        except Exception as e:
+            return False, f"Error requesting password reset: {str(e)}"
+
+    def reset_password_with_token(self, token: str, new_password: str) -> Tuple[bool, str]:
+        """Reset password using a valid token"""
+        token_data = self.db.get_password_reset_token(token)
+        if not token_data:
+            return False, "Invalid or expired reset token"
+
+        try:
+            # Hash the new password
+            new_hash, new_salt = self.hash_password(new_password)
+
+            # Update the user's password
+            self.db.update_user_password(token_data['username'], new_hash, new_salt)
+
+            # Mark the token as used
+            self.db.use_password_reset_token(token)
+
+            # Clean up expired tokens
+            self.db.cleanup_expired_tokens()
+
+            return True, "Password reset successfully"
+        except Exception as e:
+            return False, f"Error resetting password: {str(e)}"
+
 def show_login_form(auth_manager: AuthManager):
     """Display the login form"""
     st.title("🏆 Referee Mentor System")
     st.markdown("### Please log in to continue")
-    
+
     with st.form("login_form"):
         col1, col2, col3 = st.columns([1, 2, 1])
-        
+
         with col2:
             username = st.text_input("Username", placeholder="Enter your username")
             password = st.text_input("Password", type="password", placeholder="Enter your password")
-            
+
             col_login, col_space = st.columns([1, 1])
             with col_login:
                 login_button = st.form_submit_button("Login", use_container_width=True)
-            
+
             if login_button:
                 if username and password:
                     if auth_manager.authenticate_user(username, password):
@@ -133,15 +191,22 @@ def show_login_form(auth_manager: AuthManager):
                 else:
                     st.error("Please enter both username and password")
 
+    # Add forgot password link outside the form
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("Forgot Password?", use_container_width=True, type="secondary"):
+            st.session_state.show_forgot_password = True
+            st.rerun()
+
 def show_user_menu(auth_manager: AuthManager):
     """Show user menu in sidebar"""
     with st.sidebar:
         st.markdown(f"**Logged in as:** {auth_manager.get_current_user()}")
         st.markdown(f"**Role:** {auth_manager.get_user_role()}")
-        
+
         if st.button("Logout", use_container_width=True):
             auth_manager.logout()
-            
+
         # Show admin menu if user is admin
         if auth_manager.is_admin():
             st.markdown("---")
@@ -154,11 +219,11 @@ def show_user_management(auth_manager: AuthManager):
     if not auth_manager.is_admin():
         st.error("Access denied. Admin privileges required.")
         return
-    
+
     st.title("User Management")
-    
+
     tab1, tab2 = st.tabs(["Create User", "Manage Users"])
-    
+
     with tab1:
         st.subheader("Create New User")
         with st.form("create_user_form"):
@@ -167,9 +232,9 @@ def show_user_management(auth_manager: AuthManager):
             new_password = st.text_input("Password", type="password")
             confirm_password = st.text_input("Confirm Password", type="password")
             new_role = st.selectbox("Role", ["user", "admin"])
-            
+
             create_button = st.form_submit_button("Create User")
-            
+
             if create_button:
                 if not all([new_username, new_email, new_password, confirm_password]):
                     st.error("All fields are required")
@@ -183,7 +248,7 @@ def show_user_management(auth_manager: AuthManager):
                         st.success(message)
                     else:
                         st.error(message)
-    
+
     with tab2:
         st.subheader("Current Users")
         users = auth_manager.db.get_all_users()
@@ -203,10 +268,105 @@ def show_user_management(auth_manager: AuthManager):
         else:
             st.write("No users found")
 
+def show_forgot_password_form(auth_manager: AuthManager):
+    """Display the forgot password form"""
+    st.title("🏆 Referee Mentor System")
+    st.markdown("### Reset Your Password")
+
+    with st.form("forgot_password_form"):
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col2:
+            st.markdown("Enter your email address and we'll send you a password reset link.")
+            email = st.text_input("Email Address", placeholder="Enter your email address")
+
+            col_submit, col_cancel = st.columns([1, 1])
+            with col_submit:
+                submit_button = st.form_submit_button("Send Reset Link", use_container_width=True)
+            with col_cancel:
+                cancel_button = st.form_submit_button("Cancel", use_container_width=True)
+
+            if submit_button:
+                if email:
+                    # if success, let the user know to check their email
+                    success, message = auth_manager.request_password_reset(email)
+                    if success:
+                        st.success(message)
+                        if st.session_state.reset_token:
+                            # # Show the reset token for demo purposes
+                            # st.info("Use the token above to reset your password.")
+                            # if st.form_submit_button("Reset Password with Token"):
+                            #     st.session_state.show_reset_password = True
+                            #     st.session_state.show_forgot_password = False
+                                st.rerun()
+                    else:
+                        st.error(message)
+                else:
+                    st.error("Please enter your email address")
+
+            if cancel_button:
+                st.session_state.show_forgot_password = False
+                st.rerun()
+
+def show_reset_password_form(auth_manager: AuthManager):
+    """Display the reset password form"""
+    st.title("🏆 Referee Mentor System")
+    st.markdown("### Enter New Password")
+
+    with st.form("reset_password_form"):
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col2:
+            token = st.text_input("Reset Token", placeholder="Enter your reset token", value=st.session_state.reset_token or "")
+            # use password-validator here
+            new_password = st.text_input("New Password", type="password", placeholder="Enter your new password")
+            confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm your new password")
+
+            col_submit, col_cancel = st.columns([1, 1])
+            with col_submit:
+                submit_button = st.form_submit_button("Reset Password", use_container_width=True)
+            with col_cancel:
+                cancel_button = st.form_submit_button("Cancel", use_container_width=True)
+
+            if submit_button:
+                if not all([token, new_password, confirm_password]):
+                    st.error("All fields are required")
+                elif new_password != confirm_password:
+                    st.error("Passwords do not match")
+                elif len(new_password) < 8:
+                    st.error("Password must be at least 8 characters long")
+                else:
+                    success, message = auth_manager.reset_password_with_token(token, new_password)
+                    if success:
+                        st.success(message)
+                        st.info("You can now log in with your new password.")
+                        # Clear the session states and go back to login
+                        st.session_state.show_reset_password = False
+                        st.session_state.show_forgot_password = False
+                        st.session_state.reset_token = None
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.error(message)
+
+            if cancel_button:
+                st.session_state.show_reset_password = False
+                st.session_state.show_forgot_password = False
+                st.session_state.reset_token = None
+                st.rerun()
+
 def require_auth(auth_manager: AuthManager):
     """Decorator-like function to require authentication"""
     if not auth_manager.is_authenticated():
-        show_login_form(auth_manager)
-        st.stop()
+        # Check if we should show forgot password or reset password forms
+        if st.session_state.get('show_reset_password', False):
+            show_reset_password_form(auth_manager)
+            st.stop()
+        elif st.session_state.get('show_forgot_password', False):
+            show_forgot_password_form(auth_manager)
+            st.stop()
+        else:
+            show_login_form(auth_manager)
+            st.stop()
     else:
         show_user_menu(auth_manager)
