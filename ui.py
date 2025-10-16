@@ -17,7 +17,7 @@ from typing import Tuple
 from database import RefereeDbCockroach
 from excelWriter import getExcelFromText
 from googleSheets import credFile
-from auth import AuthManager, require_auth, show_user_management
+from auth import AuthManager, requireAuth, showUserManagement
 
 from main import run
 from uiData import getAllData
@@ -45,11 +45,11 @@ if streamlitCloud == 'False':
     auth_manager = AuthManager()
 
     # Require authentication - this will show login form if not authenticated
-    require_auth(auth_manager)
+    requireAuth(auth_manager)
 
     # Check if user management should be shown
     if st.session_state.get('show_user_management', False):
-        show_user_management(auth_manager)
+        showUserManagement(auth_manager)
         if st.button("← Back to Main App"):
             st.session_state.show_user_management = False
             st.rerun()
@@ -63,8 +63,8 @@ db = RefereeDbCockroach()
 
 # Track authenticated user visits
 if not streamlitCloud:
-    if  auth_manager.get_current_user():
-        db.addVisitor(auth_manager.get_current_user())
+    if  auth_manager.getCurrentUser():
+        db.addVisitor(auth_manager.getCurrentUser())
 else:
     if st.experimental_user.email != "test@test.com":
         db.addVisitor(st.experimental_user.email)

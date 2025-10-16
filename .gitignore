@@ -140,6 +140,4 @@ local.settings.json
 *.json
 .streamlit/secrets.toml
 psyched-runner-378322-*.json
-.loadEnvs.sh
-.docker.build
-create_admin.py
+tools/

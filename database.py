@@ -25,7 +25,7 @@ class RefereeDbCockroach(object):
             self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='users'")
             if not self.cursor.fetchone()[0] == 1:
                 self._createUsersTable()
-            
+
             self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='password_reset_tokens'")
             if not self.cursor.fetchone()[0] == 1:
                 self._createPasswordResetTokensTable()
@@ -93,7 +93,7 @@ class RefereeDbCockroach(object):
                                      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                                      last_login TIMESTAMP)"""
         self.cursor.execute(sql)
-    
+
     def _createPasswordResetTokensTable(self):
         sql = """CREATE TABLE password_reset_tokens (id SERIAL PRIMARY KEY,
                                                      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -503,27 +503,31 @@ class RefereeDbCockroach(object):
                                             game['age'],
                                             game['level']))
 
+
     # User management methods for authentication
 
-    def user_exists(self, username: str) -> bool:
+    def userExists(self, username: str) -> bool:
         """Check if a username already exists"""
         sql = "SELECT id FROM users WHERE username = %s"
         self.cursor.execute(sql, (username.lower(),))
         return self.cursor.fetchone() is not None
 
-    def email_exists(self, email: str) -> bool:
+
+    def emailExists(self, email: str) -> bool:
         """Check if an email already exists"""
         sql = "SELECT id FROM users WHERE email = %s"
         self.cursor.execute(sql, (email.lower(),))
         return self.cursor.fetchone() is not None
 
-    def create_user(self, username: str, password_hash: str, salt: str, email: str, role: str = 'user') -> None:
+
+    def createUser(self, username: str, password_hash: str, salt: str, email: str, role: str = 'user') -> None:
         """Create a new user"""
         sql = "INSERT INTO users (username, password_hash, salt, email, role) VALUES (%s, %s, %s, %s, %s)"
         self.cursor.execute(sql, (username.lower(), password_hash, salt, email.lower(), role))
         self.connection.commit()
 
-    def get_user_by_username(self, username: str) -> dict:
+
+    def getUserByUsername(self, username: str) -> dict:
         """Get user by username"""
         sql = "SELECT id, username, password_hash, salt, email, role, created_at, last_login FROM users WHERE username = %s"
         self.cursor.execute(sql, (username.lower(),))
@@ -541,7 +545,8 @@ class RefereeDbCockroach(object):
             }
         return None
 
-    def get_all_users(self) -> list:
+
+    def getAllUsers(self) -> list:
         """Get all users"""
         sql = "SELECT id, username, email, role, created_at, last_login FROM users ORDER BY username"
         self.cursor.execute(sql)
@@ -558,25 +563,29 @@ class RefereeDbCockroach(object):
             })
         return users
 
-    def update_user_password(self, username: str, password_hash: str, salt: str) -> None:
+
+    def updateUserPassword(self, username: str, password_hash: str, salt: str) -> None:
         """Update user password"""
         sql = "UPDATE users SET password_hash = %s, salt = %s WHERE username = %s"
         self.cursor.execute(sql, (password_hash, salt, username.lower()))
         self.connection.commit()
 
-    def update_last_login(self, username: str) -> None:
+
+    def updateLastLogin(self, username: str) -> None:
         """Update user's last login time"""
         sql = "UPDATE users SET last_login = NOW() WHERE username = %s"
         self.cursor.execute(sql, (username.lower(),))
         self.connection.commit()
 
-    def delete_user(self, user_id: int) -> None:
+
+    def deleteUser(self, user_id: int) -> None:
         """Delete a user"""
         sql = "DELETE FROM users WHERE id = %s"
         self.cursor.execute(sql, (user_id,))
         self.connection.commit()
-    
-    def get_user_by_email(self, email: str) -> dict:
+
+
+    def getUserByEmail(self, email: str) -> dict:
         """Get user by email address"""
         sql = "SELECT id, username, password_hash, salt, email, role, created_at, last_login FROM users WHERE email = %s"
         self.cursor.execute(sql, (email.lower(),))
@@ -593,23 +602,25 @@ class RefereeDbCockroach(object):
                 'last_login': row[7]
             }
         return None
-    
-    def create_password_reset_token(self, user_id: int, token: str, expires_at: datetime) -> None:
+
+
+    def createPasswordResetToken(self, user_id: int, token: str, expires_at: datetime) -> None:
         """Create a password reset token"""
         # First, invalidate any existing tokens for this user
         sql = "UPDATE password_reset_tokens SET used = TRUE WHERE user_id = %s AND used = FALSE"
         self.cursor.execute(sql, (user_id,))
-        
+
         # Create the new token
         sql = "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)"
         self.cursor.execute(sql, (user_id, token, expires_at))
         self.connection.commit()
-    
-    def get_password_reset_token(self, token: str) -> dict:
+
+
+    def getPasswordResetToken(self, token: str) -> dict:
         """Get password reset token details"""
-        sql = """SELECT prt.id, prt.user_id, prt.token, prt.expires_at, prt.used, u.email, u.username 
-                 FROM password_reset_tokens prt 
-                 JOIN users u ON prt.user_id = u.id 
+        sql = """SELECT prt.id, prt.user_id, prt.token, prt.expires_at, prt.used, u.email, u.username
+                 FROM password_reset_tokens prt
+                 JOIN users u ON prt.user_id = u.id
                  WHERE prt.token = %s AND prt.used = FALSE AND prt.expires_at > NOW()"""
         self.cursor.execute(sql, (token,))
         row = self.cursor.fetchone()
@@ -624,14 +635,26 @@ class RefereeDbCockroach(object):
                 'username': row[6]
             }
         return None
-    
-    def use_password_reset_token(self, token: str) -> None:
+
+
+    def getUsernameByResetToken(self, token: str) -> str:
+        """Get username associated with a valid password reset token"""
+        sql = "select u.email from password_reset_tokens prt JOIN users u on prt.user_id = u.id where prt.token = %s and prt.used = false and prt.expires_at < NOW()"
+        self.cursor.execute(sql, (token,))
+        row = self.cursor.fetchone()
+        if row:
+            return row[0]
+        return None
+
+
+    def usePasswordResetToken(self, token: str) -> None:
         """Mark a password reset token as used"""
         sql = "UPDATE password_reset_tokens SET used = TRUE WHERE token = %s"
         self.cursor.execute(sql, (token,))
         self.connection.commit()
-    
-    def cleanup_expired_tokens(self) -> None:
+
+
+    def cleanupExpiredTokens(self) -> None:
         """Remove expired password reset tokens"""
         sql = "DELETE FROM password_reset_tokens WHERE expires_at < NOW()"
         self.cursor.execute(sql)
