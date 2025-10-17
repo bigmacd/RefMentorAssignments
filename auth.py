@@ -7,6 +7,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 from database import RefereeDbCockroach
+from sendemail import GmailAPIEmail
 
 class AuthManager:
     """Handles user authentication and session management for the Streamlit app"""
@@ -156,9 +157,9 @@ class AuthManager:
             return False, f"Error requesting password reset: {str(e)}"
 
 
-    def resetPasswordWithToken(self, token: str, new_password: str) -> Tuple[bool, str]:
+    def resetPasswordWithToken(self, token: str, new_password: str, current_email: str) -> Tuple[bool, str]:
         """Reset password using a valid token"""
-        token_data = self.db.getPasswordResetToken(token)
+        token_data = self.db.getPasswordResetToken(token, current_email)
         if not token_data:
             return False, "Invalid or expired reset token"
 
@@ -180,14 +181,13 @@ class AuthManager:
             return False, f"Error resetting password: {str(e)}"
 
 
-
 # The following functions handle the Streamlit UI components related to authentication
 def showLoginForm(authManager: AuthManager):
     """Display the login form"""
     st.title("🏆 Referee Mentor System")
     st.markdown("### Please log in to continue")
 
-    with st.form("login_form"):
+    with st.form("login_form", clear_on_submit=True):
         col1, col2, col3 = st.columns([1, 2, 1])
 
         with col2:
@@ -205,6 +205,7 @@ def showLoginForm(authManager: AuthManager):
                         st.rerun()
                     else:
                         st.error("Invalid username or password")
+                        time.sleep(3)
                         authManager.logout()
                 else:
                     st.error("Please enter both username and password")
@@ -313,17 +314,26 @@ def showForgotPasswordForm(auth_manager: AuthManager):
                     success, message = auth_manager.requestPasswordReset(email)
                     if success:
                         st.success(message)
+                        st.session_state.show_reset_password = True
+                        st.session_state.show_forgot_password = False
                         if st.session_state.reset_token:
-                            st.session_state.show_reset_password = False
-                            st.session_state.show_forgot_password = False
-                            # # Show the reset token for demo purposes
-                            # st.info("Use the token above to reset your password.")
-                            # if st.form_submit_button("Reset Password with Token"):
-                            #     st.session_state.show_reset_password = True
-                            #     st.session_state.show_forgot_password = False
+
+                            emailClient = GmailAPIEmail()
+                            emailClient.send(
+                                email,
+                                "Referee Mentor System Password Reset",
+                                f"Use the following token to reset your password: {st.session_state.reset_token}"
+                            )
+
+                            st.session_state.current_email = email
+                            time.sleep(3)
+                            st.rerun()
+                        else:
+                            time.sleep(3)
                             st.rerun()
                     else:
                         st.error(message)
+                        st.rerun()
                 else:
                     st.error("Please enter your email address")
 
@@ -337,11 +347,25 @@ def showResetPasswordForm(auth_manager: AuthManager):
     st.title("🏆 Referee Mentor System")
     st.markdown("### Enter New Password")
 
+    gohome = False
+
+    with st.sidebar:
+        if st.button("Home", use_container_width=True):
+            gohome = True
+
+    if gohome:
+        st.session_state.show_reset_password = False
+        st.session_state.show_forgot_password = False
+        st.session_state.reset_token = None
+        st.rerun()
+
     with st.form("reset_password_form"):
         col1, col2, col3 = st.columns([1, 2, 1])
 
         with col2:
-            token = st.text_input("Reset Token", placeholder="Enter your reset token", value=st.session_state.reset_token or "")
+            token = st.session_state.reset_token
+            current_email = st.session_state.get('current_email', '')
+            token = st.text_input("Reset Token", placeholder="Enter your reset token")
             # use password-validator here
             new_password = st.text_input("New Password", type="password", placeholder="Enter your new password")
             confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm your new password")
@@ -360,7 +384,7 @@ def showResetPasswordForm(auth_manager: AuthManager):
                 elif len(new_password) < 8:
                     st.error("Password must be at least 8 characters long")
                 else:
-                    success, message = auth_manager.resetPasswordWithToken(token, new_password)
+                    success, message = auth_manager.resetPasswordWithToken(token, new_password, current_email)
                     if success:
                         st.success(message)
                         st.info("You can now log in with your new password.")
@@ -390,8 +414,6 @@ def requireAuth(auth_manager: AuthManager):
         elif st.session_state.get('show_forgot_password', False):
             showForgotPasswordForm(auth_manager)
             st.stop()
-        elif st.session_state.get('reset_token', None):
-            auth_manager.authenticateUser(auth_manager.db.getUsernameByResetToken(st.session_state.reset_token))
         else:
             showLoginForm(auth_manager)
             st.stop()

@@ -616,13 +616,15 @@ class RefereeDbCockroach(object):
         self.connection.commit()
 
 
-    def getPasswordResetToken(self, token: str) -> dict:
+    def getPasswordResetToken(self, token: str, current_email: str) -> dict:
         """Get password reset token details"""
-        sql = """SELECT prt.id, prt.user_id, prt.token, prt.expires_at, prt.used, u.email, u.username
-                 FROM password_reset_tokens prt
-                 JOIN users u ON prt.user_id = u.id
-                 WHERE prt.token = %s AND prt.used = FALSE AND prt.expires_at > NOW()"""
-        self.cursor.execute(sql, (token,))
+        sql = '''
+          SELECT prt.id, prt.user_id, prt.token, prt.expires_at, prt.used, u.email, u.username
+          FROM password_reset_tokens prt
+          JOIN users u ON prt.user_id = u.id
+          WHERE prt.token = %s AND prt.used = FALSE AND prt.expires_at < NOW() AND u.email = %s
+        '''
+        self.cursor.execute(sql, (token, current_email))
         row = self.cursor.fetchone()
         if row:
             return {
@@ -656,6 +658,6 @@ class RefereeDbCockroach(object):
 
     def cleanupExpiredTokens(self) -> None:
         """Remove expired password reset tokens"""
-        sql = "DELETE FROM password_reset_tokens WHERE expires_at < NOW()"
+        sql = "DELETE FROM password_reset_tokens WHERE expires_at > NOW() OR used = TRUE"
         self.cursor.execute(sql)
         self.connection.commit()
