@@ -58,6 +58,8 @@ def getRiskyRefs() -> list:
 
 def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list) -> None:
 
+    minimizeOutput = os.environ.get('MINIMIZE_OUTPUT', 'false').lower() == 'true'
+
     current = {}
     for c in sorted(currentu):
         current[c] = currentu[c]
@@ -94,17 +96,18 @@ def generateWorkload(currentu: list, newRefs: list, mentored: list, risky: list)
 
             # trying to reduce output a bit
             # if the crew is new and has already been mentored (but not flagged as needed follow-up), skip
-            if center in newRefs:
-                if cmarker == '**' and crisky == '':
-                    newRefs.remove(center)
-            if ar1 in newRefs:
-                if a1marker == '**' and a1risky == '':
-                    newRefs.remove(ar1)
-            if ar2 in newRefs:
-                if a2marker == '**' and a2risky == '':
-                    newRefs.remove(ar2)
-            if center not in newRefs and ar1 not in newRefs and ar2 not in newRefs:
-                continue
+            if minimizeOutput:
+                if center in newRefs:
+                    if cmarker == '**' and crisky == '':
+                        newRefs.remove(center)
+                if ar1 in newRefs:
+                    if a1marker == '**' and a1risky == '':
+                        newRefs.remove(ar1)
+                if ar2 in newRefs:
+                    if a2marker == '**' and a2risky == '':
+                        newRefs.remove(ar2)
+                if center not in newRefs and ar1 not in newRefs and ar2 not in newRefs:
+                    continue
 
 
 
