@@ -60,13 +60,14 @@ class GmailAPIEmail():
         # Define Gmail API scope for sending email
         self.SCOPES = ['https://www.googleapis.com/auth/gmail.send']
         self.creds = None
+        self.tokenfile = 'test.pickle'
         self.service = self.Authenticate()
 
     def Authenticate(self):
 
         # Run OAuth 2.0 flow to get credentials
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
+        if os.path.exists(self.tokenfile):
+            with open(self.tokenfile, 'rb') as token:
                 creds = pickle.load(token)
         # If no valid credentials, authenticate and save the token
         if not creds or not creds.valid:
@@ -75,7 +76,7 @@ class GmailAPIEmail():
             else:
                 flow = InstalledAppFlow.from_client_secrets_file('gmailcreds.json', self.SCOPES)
                 creds = flow.run_local_server(port=0)
-            with open('token.pickle', 'wb') as token:
+            with open(self.tokenfile, 'wb') as token:
                 pickle.dump(creds, token)
         # Build the Gmail API service
         return build('gmail', 'v1', credentials=creds)

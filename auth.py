@@ -1,13 +1,27 @@
 import hashlib
 import hmac
+from password_validator import PasswordValidator
 import secrets
 import streamlit as st
 import time
 
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
+
 from database import RefereeDbCockroach
 from sendemail import GmailAPIEmail
+
+schema = PasswordValidator()
+schema \
+    .min(10) \
+    .max(100) \
+    .has().uppercase() \
+    .has().lowercase() \
+    .has().digits() \
+    .has().symbols() \
+    .has().no().spaces()
+passwordRequirements = "Minumum 8 characters. At least one uppercase letter. At least  one lowercase letter, one digit, and one special character. No spaces"
+
 
 class AuthManager:
     """Handles user authentication and session management for the Streamlit app"""
@@ -259,6 +273,8 @@ def showUserManagement(auth_manager: AuthManager):
             if create_button:
                 if not all([new_username, new_email, new_password, confirm_password]):
                     st.error("All fields are required")
+                if not schema.validate(new_password):
+                    st.error(f"Password must be: {passwordRequirements}")
                 elif new_password != confirm_password:
                     st.error("Passwords do not match")
                 elif len(new_password) < 8:
@@ -379,6 +395,8 @@ def showResetPasswordForm(auth_manager: AuthManager):
             if submit_button:
                 if not all([token, new_password, confirm_password]):
                     st.error("All fields are required")
+                elif not schema.validate(new_password):
+                    st.error(f"Password must be: {passwordRequirements}")
                 elif new_password != confirm_password:
                     st.error("Passwords do not match")
                 elif len(new_password) < 8:

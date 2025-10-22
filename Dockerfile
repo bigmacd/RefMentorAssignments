@@ -21,16 +21,39 @@ ARG mslpassword=mslSW@
 ENV mslPassword $mslpassword
 ARG db_url
 ENV db_url $db_url
-ARG badmentor1
-ENV badmentor1 $badmentor1
-ARG badmentor2
-ENV badmentor2 $badmentor2
-ARG badmentor3
-ENV badmentor3 $badmentor3
 ARG STREAMLIT_CLOUD=False
 ENV STREAMLIT_CLOUD $STREAMLIT_CLOUD
 
-ENTRYPOINT ["streamlit", "run", "ui.py", "--server.port=443", "--server.address=0.0.0.0"]
+ARG _client_id
+ENV _client_id $_client_id
+ARG _client_secret
+ENV _client_secret $_client_secret
+ARG _default_scopes
+ENV _default_scopes $_default_scopes
+ARG _enable_reauth_refresh
+ENV _enable_reauth_refresh $_enable_reauth_refresh
+ARG _granted_scopes
+ENV _granted_scopes $_granted_scopes
+ARG _id_token
+ENV _id_token $_id_token
+ARG _quota_project_id
+ENV _quota_project_id $_quota_project_id
+ARG _rapt_token
+ENV _rapt_token $_rapt_token
+ARG _refresh_handler
+ENV _refresh_handler $_refresh_handler
+ARG _refresh_token
+ENV _refresh_token $_refresh_token
+ARG _scopes
+ENV _scopes $_scopes
+ARG _token_uri
+ENV _token_uri $_token_uri
+ARG expired=False
+ENV expired $expired
+ARG expiry
+ENV expiry $expiry
 
+
+ENTRYPOINT ["streamlit", "run", "ui.py", "--server.port=443", "--server.address=0.0.0.0"]
 
 # docker run -p 443:443 --name refmentor refmentor:latest

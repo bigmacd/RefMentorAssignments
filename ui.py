@@ -1,15 +1,13 @@
 
-# import logging
 import os
-# x = os.getcwd()
-# logging.warning((f"cwd: {x}"))
-# for f in os.listdir(x):
-#     logging.warning(f)
+import uuid
 
 from contextlib import contextmanager, redirect_stdout
 from datetime import datetime as dtime
 from io import StringIO
 import streamlit as st
+from streamlit_calendar import calendar
+
 from streamlit_pills import pills
 import time
 from typing import Tuple
@@ -65,9 +63,9 @@ db = RefereeDbCockroach()
 if not streamlitCloud:
     if  auth_manager.getCurrentUser():
         db.addVisitor(auth_manager.getCurrentUser())
-else:
-    if st.experimental_user.email != "test@test.com":
-        db.addVisitor(st.experimental_user.email)
+# else:
+#     if st.user != "test@test.com":
+#         db.addVisitor(st.user)
 
 if 'mentor' not in st.session_state:
     st.session_state.mentor = 'mentor'
@@ -120,7 +118,13 @@ yearData = db.getYears()
 yearData.insert(0, ' ')
 
 #tab1, tab2, tab3 = st.tabs(['Main', 'Reports', 'Workload'])
-tab = pills("Please select an activity", ["Enter a Mentor Report", "Generate Reports", "See Current Workload"], ["🍀", "🎈", "🌈"])
+tab = pills("Please select an activity", [
+        "Enter a Mentor Report",
+        "Generate Reports",
+        "See Current Workload",
+        "Calendar"
+        ],
+        ["📥", "📤", "📝", "🗓"])
 
 #with tab1:
 if tab == "Enter a Mentor Report":
@@ -560,3 +564,34 @@ elif tab == 'See Current Workload':
     output = st.empty()
     with stCapture(output.code):
         run()
+
+elif tab == "Calendar":
+
+    event_to_add = {
+        "title": "New Event",
+        "start": "2024-09-01",
+        "end": "2024-09-02",
+        "resourceId": "a",
+    }
+
+
+    options = {
+        "editable": True,
+        "selectable": True,
+        "initialView": "dayGridMonth",
+        "headerToolbar": {
+            "left": "prev,next today",
+            "center": "title",
+            "right": "dayGridMonth,timeGridWeek,listMonth"
+        }
+    }
+
+    if "CalendarKey" not in st.session_state:
+        st.session_state["CalendarKey"] = str(uuid.uuid4())
+    #events = [{"title": "Conference", "start": "2025-09-15", "end": "2025-09-17"}]
+    cal_data = calendar(events=None, options=options, key="CalendarKey")
+
+    # if st.button("Add Event"):
+    #     events.append(event_to_add)
+    #     #st.session_state["CalendarKey"] = str(uuid.uuid4())  # Refresh calendar
+    #     st.rerun()  # Rerun app to reflect changes
