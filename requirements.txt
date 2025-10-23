@@ -12,6 +12,12 @@ entrypoints==0.4
 et-xmlfile==1.1.0
 gitdb==4.0.10
 GitPython==3.1.29
+google-api-core==2.26.0
+google-api-python-client==2.184.0
+google-auth==2.16.1
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.0.0
+googleapis-common-protos==1.70.0
 gspread==5.7.2
 idna==3.4
 importlib-metadata==5.1.0

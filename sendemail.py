@@ -60,7 +60,7 @@ class GmailAPIEmail():
         # Define Gmail API scope for sending email
         self.SCOPES = ['https://www.googleapis.com/auth/gmail.send']
         self.creds = None
-        self.tokenfile = 'test.pickle'
+        self.tokenfile = 'token.pickle'
         self.service = self.Authenticate()
 
     def Authenticate(self):
@@ -69,6 +69,9 @@ class GmailAPIEmail():
         if os.path.exists(self.tokenfile):
             with open(self.tokenfile, 'rb') as token:
                 creds = pickle.load(token)
+        else:
+            print("No token file found")
+            return None
         # If no valid credentials, authenticate and save the token
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
@@ -83,20 +86,24 @@ class GmailAPIEmail():
 
 
     def send(self, _to: str, subject: str, message: str) -> None:
-        try:
-            # Create email message
-            msg = MIMEText(message)
-            msg['to'] = _to
-            msg['subject'] = subject
 
-            # Encode the message in base64 format
-            create_message = {'raw': base64.urlsafe_b64encode(msg.as_bytes()).decode()}
+        if self.service is None:
+            print("No Gmail service available, cannot send email")
+        else:
+            try:
+                # Create email message
+                msg = MIMEText(message)
+                msg['to'] = _to
+                msg['subject'] = subject
 
-            # Send the email
-            self.service.users().messages().send(userId='me', body=create_message).execute()
+                # Encode the message in base64 format
+                create_message = {'raw': base64.urlsafe_b64encode(msg.as_bytes()).decode()}
 
-        except HttpError as error:
-            print(f'An error occurred: {error}')
+                # Send the email
+                self.service.users().messages().send(userId='me', body=create_message).execute()
+
+            except HttpError as error:
+                print(f'An error occurred: {error}')
 
 
 if __name__ == '__main__':
