@@ -1,15 +1,13 @@
 
-# import logging
-# import os
-# x = os.getcwd()
-# logging.warning((f"cwd: {x}"))
-# for f in os.listdir(x):
-#     logging.warning(f)
+import os
+import uuid
 
 from contextlib import contextmanager, redirect_stdout
 from datetime import datetime as dtime
 from io import StringIO
 import streamlit as st
+from streamlit_calendar import calendar
+
 from streamlit_pills import pills
 import time
 from typing import Tuple
@@ -17,6 +15,7 @@ from typing import Tuple
 from database import RefereeDbCockroach
 from excelWriter import getExcelFromText
 from googleSheets import credFile
+from auth import AuthManager, requireAuth, showUserManagement
 
 from main import run
 from uiData import getAllData
@@ -37,14 +36,36 @@ def stCapture(outputFunc):
 
 st.set_page_config(layout='wide')
 
+streamlitCloud = os.getenv('STREAMLIT_CLOUD', 'True')
+
+if streamlitCloud == 'False':
+    # Initialize authentication
+    auth_manager = AuthManager()
+
+    # Require authentication - this will show login form if not authenticated
+    requireAuth(auth_manager)
+
+    # Check if user management should be shown
+    if st.session_state.get('show_user_management', False):
+        showUserManagement(auth_manager)
+        if st.button("← Back to Main App"):
+            st.session_state.show_user_management = False
+            st.rerun()
+        st.stop()
+
 # get all the data we can, avoids a bunch of calls to the website
 allMatchData = getAllData()
 dates = list(allMatchData.keys())
 
 db = RefereeDbCockroach()
 
-if st.experimental_user.email != "test@test.com":
-    db.addVisitor(st.experimental_user.email)
+# Track authenticated user visits
+if not streamlitCloud:
+    if  auth_manager.getCurrentUser():
+        db.addVisitor(auth_manager.getCurrentUser())
+# else:
+#     if st.user != "test@test.com":
+#         db.addVisitor(st.user)
 
 if 'mentor' not in st.session_state:
     st.session_state.mentor = 'mentor'
@@ -97,7 +118,13 @@ yearData = db.getYears()
 yearData.insert(0, ' ')
 
 #tab1, tab2, tab3 = st.tabs(['Main', 'Reports', 'Workload'])
-tab = pills("Please select an activity", ["Enter a Mentor Report", "Generate Reports", "See Current Workload"], ["🍀", "🎈", "🌈"])
+tab = pills("Please select an activity", [
+        "Enter a Mentor Report",
+        "Generate Reports",
+        "See Current Workload",
+        "Calendar"
+        ],
+        ["📥", "📤", "📝", "🗓"])
 
 #with tab1:
 if tab == "Enter a Mentor Report":
@@ -167,6 +194,12 @@ if tab == "Enter a Mentor Report":
         entry = f'{mentor[0].capitalize()} {mentor[1].capitalize()}'
         values.append(entry)
     values = sorted(values)
+    for value in values:
+        # limit the selection of mentor to the logged in user, except for martin who has to add reports for others sometimes
+        if value.lower().startswith(st.session_state.username) and not st.session_state.username.startswith('martin'):
+            defaultMentor = [value]
+            values = defaultMentor
+            break
     st.selectbox("Please select a mentor", values, key='mentorKey')
     #----------------------------------------------------
 
@@ -537,3 +570,34 @@ elif tab == 'See Current Workload':
     output = st.empty()
     with stCapture(output.code):
         run()
+
+elif tab == "Calendar":
+
+    event_to_add = {
+        "title": "New Event",
+        "start": "2024-09-01",
+        "end": "2024-09-02",
+        "resourceId": "a",
+    }
+
+
+    options = {
+        "editable": True,
+        "selectable": True,
+        "initialView": "dayGridMonth",
+        "headerToolbar": {
+            "left": "prev,next today",
+            "center": "title",
+            "right": "dayGridMonth,timeGridWeek,listMonth"
+        }
+    }
+
+    if "CalendarKey" not in st.session_state:
+        st.session_state["CalendarKey"] = str(uuid.uuid4())
+    #events = [{"title": "Conference", "start": "2025-09-15", "end": "2025-09-17"}]
+    cal_data = calendar(events=None, options=options, key="CalendarKey")
+
+    # if st.button("Add Event"):
+    #     events.append(event_to_add)
+    #     #st.session_state["CalendarKey"] = str(uuid.uuid4())  # Refresh calendar
+    #     st.rerun()  # Rerun app to reflect changes

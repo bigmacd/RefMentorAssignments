@@ -22,6 +22,18 @@ class RefereeDbCockroach(object):
             if not self.cursor.fetchone()[0] == 1:
                 self._createVisitorsTable()
 
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='users'")
+            if not self.cursor.fetchone()[0] == 1:
+                self._createUsersTable()
+
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='password_reset_tokens'")
+            if not self.cursor.fetchone()[0] == 1:
+                self._createPasswordResetTokensTable()
+
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='logs'")
+            if not self.cursor.fetchone()[0] == 1:
+                self._createLogsTable()
+
     def createDb(self) -> bool:
 
         sql = """CREATE TABLE referees (id SERIAL PRIMARY KEY,
@@ -51,6 +63,9 @@ class RefereeDbCockroach(object):
 
         self._createNewGameDetailTable()
         self._createVisitorsTable()
+        self._createUsersTable()
+        self._createPasswordResetTokensTable()
+        self._createLogsTable()
 
 
     def _createNewGameDetailTable(self):
@@ -71,6 +86,32 @@ class RefereeDbCockroach(object):
         sql = """CREATE TABLE visitors (id SERIAL PRIMARY KEY,
                                         email TEXT NOT NULL,
                                         date TIMESTAMP NOT NULL DEFAULT NOW())"""
+        self.cursor.execute(sql)
+
+    def _createUsersTable(self):
+        sql = """CREATE TABLE users (id SERIAL PRIMARY KEY,
+                                     username TEXT UNIQUE NOT NULL,
+                                     password_hash TEXT NOT NULL,
+                                     salt TEXT NOT NULL,
+                                     email TEXT UNIQUE NOT NULL,
+                                     role TEXT NOT NULL DEFAULT 'user',
+                                     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                                     last_login TIMESTAMP)"""
+        self.cursor.execute(sql)
+
+    def _createPasswordResetTokensTable(self):
+        sql = """CREATE TABLE password_reset_tokens (id SERIAL PRIMARY KEY,
+                                                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                                     token TEXT UNIQUE NOT NULL,
+                                                     expires_at TIMESTAMP NOT NULL,
+                                                     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                                                     used BOOLEAN NOT NULL DEFAULT FALSE)"""
+        self.cursor.execute(sql)
+
+
+    def _createLogsTable(self):
+        sql = """CREATE TABLE logs (timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+                                    message TEXT NOT NULL)"""
         self.cursor.execute(sql)
 
 
@@ -472,3 +513,174 @@ class RefereeDbCockroach(object):
                                             game['gameTime'],
                                             game['age'],
                                             game['level']))
+
+
+    # User management methods for authentication
+
+    def userExists(self, username: str) -> bool:
+        """Check if a username already exists"""
+        sql = "SELECT id FROM users WHERE username = %s"
+        self.cursor.execute(sql, (username.lower(),))
+        return self.cursor.fetchone() is not None
+
+
+    def emailExists(self, email: str) -> bool:
+        """Check if an email already exists"""
+        sql = "SELECT id FROM users WHERE email = %s"
+        self.cursor.execute(sql, (email.lower(),))
+        return self.cursor.fetchone() is not None
+
+
+    def createUser(self, username: str, password_hash: str, salt: str, email: str, role: str = 'user') -> None:
+        """Create a new user"""
+        sql = "INSERT INTO users (username, password_hash, salt, email, role) VALUES (%s, %s, %s, %s, %s)"
+        self.cursor.execute(sql, (username.lower(), password_hash, salt, email.lower(), role))
+        self.connection.commit()
+
+
+    def getUserByUsername(self, username: str) -> dict:
+        """Get user by username"""
+        sql = "SELECT id, username, password_hash, salt, email, role, created_at, last_login FROM users WHERE username = %s"
+        self.cursor.execute(sql, (username.lower(),))
+        row = self.cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'password_hash': row[2],
+                'salt': row[3],
+                'email': row[4],
+                'role': row[5],
+                'created_at': row[6],
+                'last_login': row[7]
+            }
+        return None
+
+
+    def getAllUsers(self) -> list:
+        """Get all users"""
+        sql = "SELECT id, username, email, role, created_at, last_login FROM users ORDER BY username"
+        self.cursor.execute(sql)
+        rows = self.cursor.fetchall()
+        users = []
+        for row in rows:
+            users.append({
+                'id': row[0],
+                'username': row[1],
+                'email': row[2],
+                'role': row[3],
+                'created_at': row[4],
+                'last_login': row[5]
+            })
+        return users
+
+
+    def updateUserPassword(self, username: str, password_hash: str, salt: str) -> None:
+        """Update user password"""
+        sql = "UPDATE users SET password_hash = %s, salt = %s WHERE username = %s"
+        self.cursor.execute(sql, (password_hash, salt, username.lower()))
+        self.connection.commit()
+
+
+    def updateLastLogin(self, username: str) -> None:
+        """Update user's last login time"""
+        sql = "UPDATE users SET last_login = NOW() WHERE username = %s"
+        self.cursor.execute(sql, (username.lower(),))
+        self.connection.commit()
+
+
+    def deleteUser(self, user_id: int) -> None:
+        """Delete a user"""
+        sql = "DELETE FROM users WHERE id = %s"
+        self.cursor.execute(sql, (user_id,))
+        self.connection.commit()
+
+
+    def getUserByEmail(self, email: str) -> dict:
+        """Get user by email address"""
+        sql = "SELECT id, username, password_hash, salt, email, role, created_at, last_login FROM users WHERE email = %s"
+        self.cursor.execute(sql, (email.lower(),))
+        row = self.cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'password_hash': row[2],
+                'salt': row[3],
+                'email': row[4],
+                'role': row[5],
+                'created_at': row[6],
+                'last_login': row[7]
+            }
+        return None
+
+
+    def createPasswordResetToken(self, user_id: int, token: str, expires_at: datetime) -> None:
+        """Create a password reset token"""
+        # First, invalidate any existing tokens for this user
+        sql = "UPDATE password_reset_tokens SET used = TRUE WHERE user_id = %s AND used = FALSE"
+        self.cursor.execute(sql, (user_id,))
+
+        # Create the new token
+        sql = "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)"
+        self.cursor.execute(sql, (user_id, token, expires_at))
+        self.connection.commit()
+
+
+    def getPasswordResetToken(self, token: str, current_email: str) -> dict:
+        """Get password reset token details"""
+        sql = '''
+          SELECT prt.id, prt.user_id, prt.token, prt.expires_at, prt.used, u.email, u.username
+          FROM password_reset_tokens prt
+          JOIN users u ON prt.user_id = u.id
+          WHERE prt.token = %s AND prt.used = FALSE AND prt.expires_at > NOW() AND u.email = %s
+        '''
+        #self.cursor.execute('insert into logs (message) values (%s)', (f'Fetching token {token} for email {current_email}',))
+        #self.cursor.execute("SELECT NOW()")
+        #row = self.cursor.fetchone()
+        #self.cursor.execute('insert into logs (message) values (%s)', (f'Current time is {row[0]}',))
+
+        self.cursor.execute(sql, (token, current_email))
+        row = self.cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'user_id': row[1],
+                'token': row[2],
+                'expires_at': row[3],
+                'used': row[4],
+                'email': row[5],
+                'username': row[6]
+            }
+        return None
+
+
+    def getUsernameByResetToken(self, token: str) -> str:
+        """Get username associated with a valid password reset token"""
+        sql = "select u.email from password_reset_tokens prt JOIN users u on prt.user_id = u.id where prt.token = %s and prt.used = false and prt.expires_at < NOW()"
+        self.cursor.execute(sql, (token,))
+        row = self.cursor.fetchone()
+        if row:
+            return row[0]
+        return None
+
+
+    def usePasswordResetToken(self, token: str) -> None:
+        """Mark a password reset token as used"""
+        sql = "UPDATE password_reset_tokens SET used = TRUE WHERE token = %s"
+        self.cursor.execute(sql, (token,))
+        self.connection.commit()
+
+
+    def cleanupExpiredTokens(self) -> None:
+        """Remove expired password reset tokens"""
+        sql = "DELETE FROM password_reset_tokens WHERE expires_at < NOW() OR used = TRUE"
+        self.cursor.execute(sql)
+        self.connection.commit()
+
+
+    def logMessage(self, message: str) -> None:
+        """Log a message to the logs table"""
+        sql = "INSERT INTO logs (message) VALUES (%s)"
+        self.cursor.execute(sql, (message,))
+        self.connection.commit()
