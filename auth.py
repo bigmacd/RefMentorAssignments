@@ -250,12 +250,12 @@ def showLoginForm(authManager: AuthManager):
 
 def showUserMenu(auth_manager: AuthManager):
     """Show user menu in sidebar"""
-    #showChangePasswordFormButton = False
+    showChangePasswordFormButton = False
     with st.sidebar:
         st.markdown(f"**Logged in as:** {auth_manager.getCurrentUser()}")
         st.markdown(f"**Role:** {auth_manager.getUserRole()}")
 
-        #showChangePasswordFormButton = st.button("Change Password", use_container_width=True)
+        showChangePasswordFormButton = st.button("Change Password", use_container_width=True)
 
         if st.button("Logout", use_container_width=True):
             auth_manager.logout()
@@ -266,8 +266,8 @@ def showUserMenu(auth_manager: AuthManager):
             st.markdown("**Admin Functions**")
             if st.button("User Management", use_container_width=True):
                 st.session_state.show_user_management = True
-    # if showChangePasswordFormButton:
-    #     showChangePasswordForm(auth_manager)
+    if showChangePasswordFormButton:
+        showChangePasswordForm(auth_manager)
 
 def showUserManagement(auth_manager: AuthManager):
     """Show user management interface for admins"""
@@ -320,7 +320,7 @@ def showUserManagement(auth_manager: AuthManager):
                     st.write(user['role'])
                 with col4:
                     if st.button("Delete", key=f"delete_{user['id']}"):
-                        # Add delete functionality here
+                        # TODO: Add delete functionality here
                         pass
         else:
             st.write("No users found")
@@ -482,8 +482,7 @@ def showChangePasswordForm(auth_manager: AuthManager):
                 elif new_password != confirm_password:
                     st.error("Passwords do not match")
                 else:
-                    auth_manager.changePassword(st.session_state.username, currentPassword, new_password)
-                    success, message = auth_manager.resetPasswordWithToken(token, new_password, current_email)
+                    success, message = auth_manager.changePassword(st.session_state.username, currentPassword, new_password)
                     if success:
                         st.success(message)
                         st.info("You can now log in with your new password.")
@@ -491,16 +490,16 @@ def showChangePasswordForm(auth_manager: AuthManager):
                         st.session_state.show_reset_password = False
                         st.session_state.show_forgot_password = False
                         st.session_state.reset_token = None
-                        time.sleep(2)
+                        auth_manager.logout()
                         st.rerun()
                     else:
                         st.error(message)
 
-                if cancel_button:
-                    st.session_state.show_reset_password = False
-                    st.session_state.show_forgot_password = False
-                    st.session_state.reset_token = None
-                    st.rerun()
+            if cancel_button:
+                st.session_state.show_reset_password = False
+                st.session_state.show_forgot_password = False
+                st.session_state.reset_token = None
+                st.rerun()
 
 
 def requireAuth(auth_manager: AuthManager):
