@@ -194,6 +194,12 @@ if tab == "Enter a Mentor Report":
         entry = f'{mentor[0].capitalize()} {mentor[1].capitalize()}'
         values.append(entry)
     values = sorted(values)
+    for value in values:
+        # limit the selection of mentor to the logged in user, except for martin who has to add reports for others sometimes
+        if value.lower().startswith(st.session_state.username) and not st.session_state.username.startswith('martin'):
+            defaultMentor = [value]
+            values = defaultMentor
+            break
     st.selectbox("Please select a mentor", values, key='mentorKey')
     #----------------------------------------------------
 

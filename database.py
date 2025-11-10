@@ -30,6 +30,10 @@ class RefereeDbCockroach(object):
             if not self.cursor.fetchone()[0] == 1:
                 self._createPasswordResetTokensTable()
 
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='logs'")
+            if not self.cursor.fetchone()[0] == 1:
+                self._createLogsTable()
+
     def createDb(self) -> bool:
 
         sql = """CREATE TABLE referees (id SERIAL PRIMARY KEY,
@@ -61,6 +65,7 @@ class RefereeDbCockroach(object):
         self._createVisitorsTable()
         self._createUsersTable()
         self._createPasswordResetTokensTable()
+        self._createLogsTable()
 
 
     def _createNewGameDetailTable(self):
@@ -101,6 +106,12 @@ class RefereeDbCockroach(object):
                                                      expires_at TIMESTAMP NOT NULL,
                                                      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                                                      used BOOLEAN NOT NULL DEFAULT FALSE)"""
+        self.cursor.execute(sql)
+
+
+    def _createLogsTable(self):
+        sql = """CREATE TABLE logs (timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+                                    message TEXT NOT NULL)"""
         self.cursor.execute(sql)
 
 
@@ -622,8 +633,13 @@ class RefereeDbCockroach(object):
           SELECT prt.id, prt.user_id, prt.token, prt.expires_at, prt.used, u.email, u.username
           FROM password_reset_tokens prt
           JOIN users u ON prt.user_id = u.id
-          WHERE prt.token = %s AND prt.used = FALSE AND prt.expires_at < NOW() AND u.email = %s
+          WHERE prt.token = %s AND prt.used = FALSE AND prt.expires_at > NOW() AND u.email = %s
         '''
+        #self.cursor.execute('insert into logs (message) values (%s)', (f'Fetching token {token} for email {current_email}',))
+        #self.cursor.execute("SELECT NOW()")
+        #row = self.cursor.fetchone()
+        #self.cursor.execute('insert into logs (message) values (%s)', (f'Current time is {row[0]}',))
+
         self.cursor.execute(sql, (token, current_email))
         row = self.cursor.fetchone()
         if row:
@@ -658,6 +674,13 @@ class RefereeDbCockroach(object):
 
     def cleanupExpiredTokens(self) -> None:
         """Remove expired password reset tokens"""
-        sql = "DELETE FROM password_reset_tokens WHERE expires_at > NOW() OR used = TRUE"
+        sql = "DELETE FROM password_reset_tokens WHERE expires_at < NOW() OR used = TRUE"
         self.cursor.execute(sql)
+        self.connection.commit()
+
+
+    def logMessage(self, message: str) -> None:
+        """Log a message to the logs table"""
+        sql = "INSERT INTO logs (message) VALUES (%s)"
+        self.cursor.execute(sql, (message,))
         self.connection.commit()

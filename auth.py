@@ -4,12 +4,13 @@ from password_validator import PasswordValidator
 import secrets
 import streamlit as st
 import time
+import os
 
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
 from database import RefereeDbCockroach
-from sendemail import GmailAPIEmail
+from sendemail import SendMailSimple
 
 schema = PasswordValidator()
 schema \
@@ -38,12 +39,16 @@ class AuthManager:
             st.session_state.user_role = None
         if 'user_id' not in st.session_state:
             st.session_state.user_id = None
+        if 'username' not in st.session_state:
+            st.session_state.username = None
         if 'show_forgot_password' not in st.session_state:
             st.session_state.show_forgot_password = False
         if 'show_reset_password' not in st.session_state:
             st.session_state.show_reset_password = False
         if 'reset_token' not in st.session_state:
             st.session_state.reset_token = None
+        if 'current_email' not in st.session_state:
+            st.session_state.current_email = None
 
 
     def hashPassword(self, password: str, salt: str = None) -> Tuple[str, str]:
@@ -74,6 +79,8 @@ class AuthManager:
             st.session_state.username = username
             st.session_state.user_role = user['role']
             st.session_state.user_id = user['id']
+            st.session_state.username = user['username']
+            st.session_state.current_email = user['email']
             return True
         return False
 
@@ -84,6 +91,8 @@ class AuthManager:
         st.session_state.username = None
         st.session_state.user_role = None
         st.session_state.user_id = None
+        st.session_state.reset_token = None
+        st.session_state.username = None
         st.rerun()
 
 
@@ -150,6 +159,10 @@ class AuthManager:
     def requestPasswordReset(self, email: str) -> Tuple[bool, str]:
         """Request a password reset for the given email"""
         user = self.db.getUserByEmail(email)
+        self.db.logMessage(f"Password reset requested for email: {email} return {user}")
+        st.session_state.current_email = email
+
+
         if not user:
             # Don't reveal whether the email exists or not for security
             return True, "If the email exists in our system, a password reset link will be sent."
@@ -161,6 +174,7 @@ class AuthManager:
 
             # Store the token in database
             self.db.createPasswordResetToken(user['id'], token, expires_at)
+            self.db.logMessage(f"Password reset token created for user ID: {user['id']} with token: {token} expires at {expires_at}")
 
             # In a real implementation, you would send an email here
             # For now, we'll show the token in the UI (not recommended for production)
@@ -174,6 +188,8 @@ class AuthManager:
     def resetPasswordWithToken(self, token: str, new_password: str, current_email: str) -> Tuple[bool, str]:
         """Reset password using a valid token"""
         token_data = self.db.getPasswordResetToken(token, current_email)
+        self.db.logMessage(f"Attempting password reset with token: {token} for email: {current_email} found data: {token_data}")
+
         if not token_data:
             return False, "Invalid or expired reset token"
 
@@ -234,9 +250,12 @@ def showLoginForm(authManager: AuthManager):
 
 def showUserMenu(auth_manager: AuthManager):
     """Show user menu in sidebar"""
+    #showChangePasswordFormButton = False
     with st.sidebar:
         st.markdown(f"**Logged in as:** {auth_manager.getCurrentUser()}")
         st.markdown(f"**Role:** {auth_manager.getUserRole()}")
+
+        #showChangePasswordFormButton = st.button("Change Password", use_container_width=True)
 
         if st.button("Logout", use_container_width=True):
             auth_manager.logout()
@@ -247,7 +266,8 @@ def showUserMenu(auth_manager: AuthManager):
             st.markdown("**Admin Functions**")
             if st.button("User Management", use_container_width=True):
                 st.session_state.show_user_management = True
-
+    # if showChangePasswordFormButton:
+    #     showChangePasswordForm(auth_manager)
 
 def showUserManagement(auth_manager: AuthManager):
     """Show user management interface for admins"""
@@ -333,12 +353,25 @@ def showForgotPasswordForm(auth_manager: AuthManager):
                         st.session_state.show_reset_password = True
                         st.session_state.show_forgot_password = False
                         if st.session_state.reset_token:
+                            auth_manager.db.logMessage(f"email user: {os.environ.get('EMAIL_USER', 'missing')}")
+                            auth_manager.db.logMessage(f"email token: {os.environ.get('EMAIL_TOKEN', 'missing')}")
 
-                            emailClient = GmailAPIEmail()
+                            emailClient = SendMailSimple()
                             emailClient.send(
                                 email,
                                 "Referee Mentor System Password Reset",
-                                f"Use the following token to reset your password: {st.session_state.reset_token}"
+                                f"""<h3>This is a message from the Referee Mentor Website.</h3>
+                                <table>
+                                    <tr>
+                                    <td>If you did not request a password reset, you can safely ignore this email.</td>
+                                    <tr>
+                                    <td><b>Use the following token to reset your password:</b></td>
+                                    </tr>
+                                    <tr>
+                                    <td style="text-align: center; vertical-align: middle;">{st.session_state.reset_token}</td>
+                                    </tr>
+                                </table></p>
+                                """
                             )
 
                             st.session_state.current_email = email
@@ -420,6 +453,54 @@ def showResetPasswordForm(auth_manager: AuthManager):
                 st.session_state.show_forgot_password = False
                 st.session_state.reset_token = None
                 st.rerun()
+
+
+@st.dialog("Change Password", width="large")
+def showChangePasswordForm(auth_manager: AuthManager):
+    """Display the change password form"""
+    with st.form("change_password_form"):
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col2:
+            token = st.session_state.reset_token
+            current_email = st.session_state.get('current_email', '')
+            currentPassword = st.text_input("Current Password", type="password", placeholder="Enter your current password")
+
+            new_password = st.text_input("New Password", type="password", placeholder="Enter your new password")
+            confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm your new password")
+
+            col_submit, col_cancel = st.columns([1, 1])
+            with col_submit:
+                submit_button = st.form_submit_button("Change Password", use_container_width=True)
+            with col_cancel:
+                cancel_button = st.form_submit_button("Cancel", use_container_width=True)
+            if submit_button:
+                if not all([new_password, confirm_password]):
+                    st.error("All fields are required")
+                elif not schema.validate(new_password):
+                    st.error(f"Password must be: {passwordRequirements}")
+                elif new_password != confirm_password:
+                    st.error("Passwords do not match")
+                else:
+                    auth_manager.changePassword(st.session_state.username, currentPassword, new_password)
+                    success, message = auth_manager.resetPasswordWithToken(token, new_password, current_email)
+                    if success:
+                        st.success(message)
+                        st.info("You can now log in with your new password.")
+                        # Clear the session states and go back to login
+                        st.session_state.show_reset_password = False
+                        st.session_state.show_forgot_password = False
+                        st.session_state.reset_token = None
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        st.error(message)
+
+                if cancel_button:
+                    st.session_state.show_reset_password = False
+                    st.session_state.show_forgot_password = False
+                    st.session_state.reset_token = None
+                    st.rerun()
 
 
 def requireAuth(auth_manager: AuthManager):

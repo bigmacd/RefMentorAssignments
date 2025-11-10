@@ -12,45 +12,32 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 
-class SendEmail():
+class SendMailSimple():
 
     def __init__(self):
-        # default to local proton bridge server
-        self.mailserver = '127.0.0.1'
-        self.serverPort = 1025
+        self.mailserver = 'smtp.protonmail.ch'
+        self.serverPort = 587
 
-        self._username = os.environ.get('proton_bridge_username', None)
-        self._password = os.environ.get('proton_bridge_password', None)
-        self._you = None
-        self._to = []
-        self._subject = None
-        self._body = None
-        self._message = MIMEMultipart()
+        self.user = os.environ.get('EMAIL_USER')
+        self.token = os.environ.get('EMAIL_TOKEN')
 
 
-    def setFrom(self, you):
-        self._message['From']= you
+    def message(self, recipient, subject, message):
+        self.message = MIMEMultipart()
+        self.message['From'] = self.user
+        self.message['To'] = recipient
+        self.message['Subject'] = subject
+        #self.message.attach(MIMEText(message, 'plain'))
+        self.message.attach(MIMEText(message, 'html'))
 
 
-    def addRecipient(self, recipent):
-        self._message['To'] = recipent
+    def send(self, recipient: str, subject: str, message: str) -> None:
+        self.message(recipient, subject, message)
+        with smtplib.SMTP(self.mailserver, self.serverPort) as server:
+            server.starttls()
+            server.login(self.user, self.token)
+            server.send_message(self.message)
 
-
-    def subject(self, subject):
-        self._message['Subject'] = subject
-
-
-    def message(self, message):
-        self._body = message
-
-
-    def send(self):
-        with smtplib.SMTP(self.mailserver, self.serverPort) as pmbridge:
-            pmbridge.starttls()
-            pmbridge.login(self._username, self._password)
-
-            self._message.attach(MIMEText(self._body, 'plain'))
-            pmbridge.sendmail(self._message['From'], self._message['To'].split(','), self._message.as_string())
 
 
 class GmailAPIEmail():
@@ -108,13 +95,22 @@ class GmailAPIEmail():
 
 if __name__ == '__main__':
 
-    # g = SendEmail()
-    # g.setFrom('someuser@gmail.com')
-    # g.addRecipient('someuser@gmail.com')
-    # g.subject("Do you want to be a milli?")
-    # g.message("test message")
-    # g.send()
+    g = SendMailSimple()
+    g.send("martin.cooley@gmail.com",
+           "Referee Mentor System Password Reset",
+           """<h3>This is a message from the Referee Mentor Website.</h3>
+                 <table>
+                    <tr>
+                    <td>If you did not request a password reset, you can safely ignore this email.</td>
+                    <tr>
+                    <td><b>Use the following token to reset your password:</b></td>
+                    </tr>
+                    <tr>
+                    <td style="text-align: center; vertical-align: middle;">This is a test message</td>
+                    </tr>
+                 </table></p>
+           """)
 
-    g = GmailAPIEmail()
-    g.send('someuser@some.org', 'test subject', 'test message')
+    # g = GmailAPIEmail()
+    # g.send('someuser@some.org', 'test subject', 'test message')
 
