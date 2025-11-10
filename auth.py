@@ -33,6 +33,8 @@ class AuthManager:
         # Initialize session state variables for authentication
         if 'authenticated' not in st.session_state:
             st.session_state.authenticated = False
+        if 'logged_user' not in st.session_state:
+            st.session_state.logged_user = None
         if 'username' not in st.session_state:
             st.session_state.username = None
         if 'user_role' not in st.session_state:
@@ -88,6 +90,7 @@ class AuthManager:
     def logout(self):
         """Logout the current user"""
         st.session_state.authenticated = False
+        st.session_state.logged_user = None
         st.session_state.username = None
         st.session_state.user_role = None
         st.session_state.user_id = None
@@ -209,6 +212,15 @@ class AuthManager:
             return True, "Password reset successfully"
         except Exception as e:
             return False, f"Error resetting password: {str(e)}"
+
+
+    def logCurrentUser(self):
+        """Log the current user's visit"""
+
+        role = st.session_state.user_role
+        username = st.session_state.username
+        email = st.session_state.current_email
+        self.db.addVisitor(email, username, role)
 
 
 # The following functions handle the Streamlit UI components related to authentication

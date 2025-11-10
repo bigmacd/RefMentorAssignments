@@ -359,3 +359,104 @@ class MySoccerLeague(RefereeWebSite):
         self.emails = emails
         return retVal
 
+
+    def getReportData(self, startDate: str, endDate: str):
+        url = f'https://mysoccerleague.com/GamesReportChoice.jsp?YSLkey={self._loginKey}&actionName=Game%20Reports'
+
+        # what is data and data2 for?
+        data = f'YSLkey={self._loginKey}&returnJsp=ShowGameReports.jsp&dateMode=allDates&startDate=2023-11-17&endDate=2023-11-17&ageGroupFilter=all&genderFilter=all&classFilter=all&grSelect=1&grSelect=2&grSelect=3&filterButton=View+Reports'
+        data2 = {
+            'YSLkey': self._loginKey,
+            'returnJsp': 'ShowGameReports.jsp',
+            'dateMode': 'allDates',
+            'startDate': '2023-11-17',
+            'endDate': '2023-11-17',
+            'ageGroupFilter': 'all',
+            'genderFilter': 'all',
+            'classFilter': 'all',
+            'grSelect': 1,
+            'grSelect': 2,
+            'grSelect': 3,
+            'filterButton': 'View+Reports'
+        }
+        #response = requests.post(url, json = data2)
+        self._browser.open(url)
+        self._browser.select_form('form')
+        self._browser['YSLkey'] = self._loginKey
+        self._browser['returnJsp'] = 'ShowGameReports.jsp'
+        self._browser['dateMode'] = 'selectDates'
+        self._browser['startDate'] = startDate
+        self._browser['endDate'] = endDate
+        response = self._browser.submit_selected()
+        return response
+
+
+    def getReportForSeason(self, startDate: str, endDate: str) -> dict:
+        reportData = self.getReportData(startDate, endDate)
+
+        metrics = {
+            "gamesPlayed": 0,
+            "totalRefAssignments": 0,
+            "refsAssigned": 0,
+            "refsMissing": 0,
+            "missingCenters": 0,
+            "missingARs": 0
+        }
+
+        entries = reportData.soup.find_all("tr", { "class" : 'trstyle2' })
+
+        metrics['gamesPlayed'] = len(entries)
+
+        for entry in entries:
+            elements = entry.find_all('td')
+
+            refsNeeded = 3
+            if elements[3].text == 'U-9' or elements[3].text == 'U-10':
+                refsNeeded = 1
+            metrics['totalRefAssignments'] += refsNeeded
+
+            refsAssigned = 0
+            ref1 = elements[8].text.strip('\xa0')
+            ref2 = elements[9].text.strip('\xa0')
+            ref3 = elements[10].text.strip('\xa0')
+
+            if len(ref1) != 0:
+                refsAssigned += 1
+            else:
+                metrics['missingCenters'] += 1
+
+            if len(ref2) != 0:
+                refsAssigned += 1
+            else:
+                if refsNeeded == 3:
+                    metrics['missingARs'] += 1
+
+            if len(ref3) != 0:
+                refsAssigned += 1
+            else:
+                if refsNeeded == 3:
+                    metrics['missingARs'] += 1
+
+            metrics['refsAssigned'] += refsAssigned
+            metrics['refsMissing'] += refsNeeded - refsAssigned
+
+
+                #  0 <td>9/8/2023 - 9:30 PM</td>
+                #  1 <td>764395 (confirmed)</td>
+                #  2 <td><a href="javascript:directWindow('Oakton HS 3 - both sides','No directions available','No comments')">Oakton HS 3 Full field</a></td>
+                #  3 <td>O-30</td>
+                #  4 <td>Co-ed</td>
+                #  5 <td>Rec</td>
+                #  6 <td align="center">Team 4</td>
+                #  7 <td align="center">Team 3</td>
+                #  8 <td align="center">Jaime Villamarin</td>
+                #  9 <td align="center">Martin Cooley</td>
+                # 10 <td align="center">Jason Allen</td>
+
+                #ref1 = elements[9].text.strip('\n').strip('\r')
+                #ref2 = elements[10].text.strip('\n').strip('\r')
+                #ref3 = elements[11].text.strip('\n').strip('\r')
+
+        return metrics
+
+

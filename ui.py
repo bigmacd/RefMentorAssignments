@@ -60,12 +60,10 @@ dates = list(allMatchData.keys())
 db = RefereeDbCockroach()
 
 # Track authenticated user visits
-if not streamlitCloud:
-    if  auth_manager.getCurrentUser():
-        db.addVisitor(auth_manager.getCurrentUser())
-# else:
-#     if st.user != "test@test.com":
-#         db.addVisitor(st.user)
+if  auth_manager.getCurrentUser():
+    if not st.session_state.get('logged_user'):
+        auth_manager.logCurrentUser()
+        st.session_state.logged_user = True
 
 if 'mentor' not in st.session_state:
     st.session_state.mentor = 'mentor'

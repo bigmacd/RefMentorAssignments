@@ -18,9 +18,16 @@ class RefereeDbCockroach(object):
             if not self.cursor.fetchone()[0] == 1:
                 self._createNewGameDetailTable()
 
+            # for visitors, drop the old table and create the new one
+            # old table is 'visitors'
+            # new table is 'user_visits'
             self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='visitors'")
+            if self.cursor.fetchone()[0] == 1:
+                self.cursor.execute(" DROP TABLE visitors")
+
+            self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='user_visits'")
             if not self.cursor.fetchone()[0] == 1:
-                self._createVisitorsTable()
+                self._createUserVisitsTable()
 
             self.cursor.execute(" SELECT count(table_name) FROM information_schema.tables WHERE table_schema LIKE 'public' AND table_type LIKE 'BASE TABLE' AND table_name='users'")
             if not self.cursor.fetchone()[0] == 1:
@@ -62,7 +69,7 @@ class RefereeDbCockroach(object):
         self.cursor.execute(sql)
 
         self._createNewGameDetailTable()
-        self._createVisitorsTable()
+        self._createUserVisitsTable()
         self._createUsersTable()
         self._createPasswordResetTokensTable()
         self._createLogsTable()
@@ -82,11 +89,13 @@ class RefereeDbCockroach(object):
             self.cursor.execute(sql)
 
 
-    def _createVisitorsTable(self):
-        sql = """CREATE TABLE visitors (id SERIAL PRIMARY KEY,
-                                        email TEXT NOT NULL,
-                                        date TIMESTAMP NOT NULL DEFAULT NOW())"""
+    def _createUserVisitsTable(self):
+        sql = """CREATE TABLE user_visits (username TEXT NOT NULL,
+                                           role TEXT NOT NULL,
+                                           email TEXT NOT NULL,
+                                           date TIMESTAMP NOT NULL DEFAULT NOW())"""
         self.cursor.execute(sql)
+
 
     def _createUsersTable(self):
         sql = """CREATE TABLE users (id SERIAL PRIMARY KEY,
@@ -98,6 +107,7 @@ class RefereeDbCockroach(object):
                                      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                                      last_login TIMESTAMP)"""
         self.cursor.execute(sql)
+
 
     def _createPasswordResetTokensTable(self):
         sql = """CREATE TABLE password_reset_tokens (id SERIAL PRIMARY KEY,
@@ -115,9 +125,9 @@ class RefereeDbCockroach(object):
         self.cursor.execute(sql)
 
 
-    def addVisitor(self, email: str) -> None:
-        sql = "INSERT INTO visitors (email) values (%s)"
-        self.cursor.execute(sql, (email,))
+    def addVisitor(self, email: str, username: str, role: str) -> None:
+        sql = "INSERT INTO user_visits (email, username, role) values (%s, %s, %s)"
+        self.cursor.execute(sql, (email, username, role))
         self.connection.commit()
 
 
@@ -252,6 +262,37 @@ class RefereeDbCockroach(object):
     #     for row in rows:
     #         retVal[f'{row[1]} {row[0]}'] = [ row[2], row[3]]
     #     return retVal
+
+
+    def getMentoringSessionMetrics(self, year: int, season: str) -> dict:
+        '''
+        season is either 'fall' or 'spring'
+        returns number of referees mentored and number of mentoring sessions
+        '''
+
+        def getRanges(season: str, year: int) -> list:
+            if season == 'fall':
+                return [f'{year}-07-01', f'{year}-12-31']
+            else:
+                return [f'{year}-04-01', f'{year}-06-30']
+
+        range = getRanges(season, year)
+        sql = f"""
+            SELECT
+            COUNT(DISTINCT ms.mentor) AS distinct_mentors,
+            COUNT(DISTINCT ms.mentee) AS distinct_referees,
+            COUNT(DISTINCT ms.id) AS distinct_reports
+            FROM mentor_sessions ms
+            WHERE ms.date BETWEEN '{range[0]}' AND '{range[1]}'
+        """
+        r = self.cursor.execute(sql)
+        data =  r.fetchall()
+        retVal = {
+            'mentors': data[0][0],
+            'referees': data[0][1],
+            'reports': data[0][2]
+        }
+        return retVal
 
 
     def getMentoringSessions(self) -> dict:
@@ -684,3 +725,5 @@ class RefereeDbCockroach(object):
         sql = "INSERT INTO logs (message) VALUES (%s)"
         self.cursor.execute(sql, (message,))
         self.connection.commit()
+
+
