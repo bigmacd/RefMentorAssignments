@@ -83,6 +83,9 @@ class AuthManager:
             st.session_state.user_id = user['id']
             st.session_state.username = user['username']
             st.session_state.current_email = user['email']
+
+            # update the last login timestamp
+            self.db.updateLastLogin(username)
             return True
         return False
 
