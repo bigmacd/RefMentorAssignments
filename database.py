@@ -264,26 +264,18 @@ class RefereeDbCockroach(object):
     #     return retVal
 
 
-    def getMentoringSessionMetrics(self, year: int, season: str) -> dict:
+    def getMentoringSessionMetrics(self, startDate: str, endDate: str) -> dict:
         '''
-        season is either 'fall' or 'spring'
         returns number of referees mentored and number of mentoring sessions
         '''
 
-        def getRanges(season: str, year: int) -> list:
-            if season == 'fall':
-                return [f'{year}-07-01', f'{year}-12-31']
-            else:
-                return [f'{year}-04-01', f'{year}-06-30']
-
-        range = getRanges(season, year)
         sql = f"""
             SELECT
             COUNT(DISTINCT ms.mentor) AS distinct_mentors,
             COUNT(DISTINCT ms.mentee) AS distinct_referees,
             COUNT(DISTINCT ms.id) AS distinct_reports
             FROM mentor_sessions ms
-            WHERE ms.date BETWEEN '{range[0]}' AND '{range[1]}'
+            WHERE ms.date BETWEEN '{startDate}' AND '{endDate}'
         """
         r = self.cursor.execute(sql)
         data =  r.fetchall()
