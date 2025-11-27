@@ -134,43 +134,25 @@ def main_page():
         dark.bind_value(app.storage.user, 'dark_mode')
         ui.switch('Dark Mode').bind_value(app.storage.user, 'dark_mode')
 
-    # Tab navigation
-    with ui.row().classes('w-full justify-center p-4'):
-        tabs = [
-            ("📥 Enter a Mentor Report", "Enter a Mentor Report"),
-            ("📤 Generate Reports", "Generate Reports"),
-            ("📝 See Current Workload", "See Current Workload"),
-        ]
-
-        tab_buttons = {}
-        for icon_label, tab_id in tabs:
-            btn = ui.button(icon_label, on_click=lambda t=tab_id: switch_tab(t))
-            btn.classes('tab-button')
-            tab_buttons[tab_id] = btn
+    # Tab navigation using NiceGUI tabs
+    with ui.tabs().classes('w-full') as tabs:
+        tab_report = ui.tab('📥 Report', 'Enter a Mentor Report')
+        tab_generate = ui.tab('📤 Generate', 'Generate Reports')
+        tab_workload = ui.tab('📝 Workload', 'See Current Workload')
+        tab_calendar = ui.tab('🗓 Calendar', 'Calendar')
 
     # Content container
-    content = ui.column().classes('w-full p-4')
+    content = ui.tab_panels(tabs, value=tab_report).classes('w-full')
 
-    def switch_tab(tab_id):
-        state.current_tab = tab_id
-        content.clear()
-        with content:
-            if tab_id == "Enter a Mentor Report":
-                render_mentor_report_tab()
-            elif tab_id == "Generate Reports":
-                render_reports_tab()
-            elif tab_id == "See Current Workload":
-                render_workload_tab()
-
-        # Update button styles
-        for tid, btn in tab_buttons.items():
-            if tid == tab_id:
-                btn.classes(add='active')
-            else:
-                btn.classes(remove='active')
-
-    # Initial render
-    switch_tab(state.current_tab)
+    with content:
+        with ui.tab_panel(tab_report):
+            render_mentor_report_tab()
+        with ui.tab_panel(tab_generate):
+            render_reports_tab()
+        with ui.tab_panel(tab_workload):
+            render_workload_tab()
+        with ui.tab_panel(tab_calendar):
+            render_calendar_tab()
 
 
 def render_mentor_report_tab():
@@ -485,6 +467,24 @@ def render_workload_tab():
                 output_area.content = f'Error loading workload: {str(e)}'
 
         ui.timer(0.1, load_workload, once=True)
+
+
+def render_calendar_tab():
+    """Render the calendar tab"""
+
+    with ui.card().classes('form-container w-full'):
+        ui.label('Calendar').classes('text-xl font-bold mb-4')
+
+        from datetime import date
+        today = date.today()
+
+        # Use NiceGUI's date element for a simple calendar view
+        with ui.row().classes('w-full justify-center'):
+            ui.date(value=today.isoformat()).classes('w-full max-w-md')
+
+        ui.separator().classes('my-4')
+
+        ui.label('Note: Calendar integration with workload data coming soon.').classes('text-gray-500 mt-4 text-sm')
 
 
 if __name__ in {"__main__", "__mp_main__"}:
